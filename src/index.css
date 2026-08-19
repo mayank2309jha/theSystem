@@ -1,0 +1,146 @@
+/* Scope class-name scanning to src/ only — without this, Tailwind's default
+   auto-detection also scans root-level docs (README.md, COMPANIES.md,
+   SKILLS.md), which mention utility class names like `text-system-blue` in
+   prose/code-spans and would otherwise get compiled in as unused CSS. */
+@import "tailwindcss" source(none);
+@source "./";
+
+/* ==========================================================================
+   THE SYSTEM — COLOR PALETTE
+   ==========================================================================
+   Every color used anywhere in the app is controlled from THIS block.
+   To try a different palette, edit the hex/rgb values below and nothing
+   else — every Tailwind utility (bg-system-void, text-rank-a, border-danger,
+   etc.) and every hand-written CSS rule in this file reads from these vars.
+
+   Current theme: "Regal" — inspired by colorpalette.jpg (Regal Navy / Deep
+   Crimson / Opulent Gold / Ethereal Ivory / Velvet Obsidian), adapted so
+   the E→A rank ladder stays in a cool blue→violet family and the two warm
+   colors are reserved as deliberate accents: Gold for S-Rank/money/XP
+   (the "you made it" color), Crimson for Failed/critical states only.
+
+   Each color below is defined twice: once as a hex value (for solid
+   fills/text/borders) and once as an "R G B" triplet with the same name
+   plus `-rgb` (for glows/gradients that need alpha transparency via
+   `rgb(var(--sl-x-rgb) / 40%)`). Keep both in sync when you change a color.
+   ========================================================================== */
+:root {
+  /* Backgrounds */
+  --sl-void: #171721; /* Velvet Obsidian — page backdrop behind panels */
+  --sl-panel: #0a1d4b; /* Regal Navy — main panel surface */
+  --sl-panel-2: #081638; /* darker navy — bottom of panel gradient */
+  --sl-border: #2c3d6b;
+  --sl-border-rgb: 44 61 107;
+
+  /* Text */
+  --sl-text: #f7ebe0; /* Ethereal Ivory — default body text */
+  --sl-text-dim: #a9b2d0;
+
+  /* Primary / secondary accents (interactive elements, glows, D/B ranks) */
+  --sl-accent: #4f8fe0; /* sapphire */
+  --sl-accent-rgb: 79 143 224;
+  --sl-accent-dim: #1f3d70;
+  --sl-accent-2: #8f6fe0; /* violet */
+  --sl-accent-2-rgb: 143 111 224;
+
+  /* Reserved warm accents */
+  --sl-emphasis: #cc9e4a; /* Opulent Gold — S-Rank, CTC/XP, top-tier highlights */
+  --sl-emphasis-rgb: 204 158 74;
+  --sl-danger: #9e0e18; /* Deep Crimson — Failed / critical / unverified warnings */
+  --sl-danger-rgb: 158 14 24;
+
+  /* Hunter-rank ladder, E (weakest) -> S (strongest): slate -> blue -> teal -> indigo -> violet -> gold */
+  --sl-rank-e: #6b7594;
+  --sl-rank-e-rgb: 107 117 148;
+  --sl-rank-d: #4f8fe0;
+  --sl-rank-d-rgb: 79 143 224;
+  --sl-rank-c: #3fc7dc;
+  --sl-rank-c-rgb: 63 199 220;
+  --sl-rank-b: #7c6fd9;
+  --sl-rank-b-rgb: 124 111 217;
+  --sl-rank-a: #a17bef;
+  --sl-rank-a-rgb: 161 123 239;
+  --sl-rank-s: #cc9e4a;
+  --sl-rank-s-rgb: 204 158 74;
+}
+
+/* Tailwind theme tokens — map utility classes (bg-system-void, text-rank-a,
+   border-danger, ...) onto the palette vars above. Component code never
+   hardcodes a color; it only ever uses these class names. */
+@theme {
+  --font-display: "Orbitron", sans-serif;
+  --font-body: "Rajdhani", sans-serif;
+
+  --color-system-void: var(--sl-void);
+  --color-system-panel: var(--sl-panel);
+  --color-system-panel-2: var(--sl-panel-2);
+  --color-system-border: var(--sl-border);
+  --color-system-blue: var(--sl-accent);
+  --color-system-blue-dim: var(--sl-accent-dim);
+  --color-system-violet: var(--sl-accent-2);
+  --color-system-gold: var(--sl-emphasis);
+  --color-danger: var(--sl-danger);
+
+  --color-rank-e: var(--sl-rank-e);
+  --color-rank-d: var(--sl-rank-d);
+  --color-rank-c: var(--sl-rank-c);
+  --color-rank-b: var(--sl-rank-b);
+  --color-rank-a: var(--sl-rank-a);
+  --color-rank-s: var(--sl-rank-s);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-system-void);
+  font-family: var(--font-body);
+  color: var(--sl-text);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 15% 0%, rgb(var(--sl-accent-rgb) / 10%), transparent 40%),
+    radial-gradient(circle at 85% 20%, rgb(var(--sl-accent-2-rgb) / 8%), transparent 45%);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.system-panel {
+  background: linear-gradient(180deg, var(--color-system-panel) 0%, var(--color-system-panel-2) 100%);
+  border: 1px solid var(--color-system-border);
+  box-shadow:
+    0 0 0 1px rgb(var(--sl-accent-rgb) / 8%),
+    0 0 24px rgb(var(--sl-accent-rgb) / 10%),
+    inset 0 0 40px rgb(var(--sl-accent-rgb) / 4%);
+  clip-path: polygon(
+    0 12px, 12px 0,
+    calc(100% - 12px) 0, 100% 12px,
+    100% calc(100% - 12px), calc(100% - 12px) 100%,
+    12px 100%, 0 calc(100% - 12px)
+  );
+}
+
+.system-glow-text {
+  text-shadow: 0 0 8px rgb(var(--sl-accent-rgb) / 65%), 0 0 22px rgb(var(--sl-accent-rgb) / 35%);
+}
+
+/* Rank glow rings, keyed by rank letter — used by RankBadge/RankTrack via RANK_STYLES.glow */
+.rank-glow-E { box-shadow: 0 0 14px rgb(var(--sl-rank-e-rgb) / 40%); }
+.rank-glow-D { box-shadow: 0 0 16px rgb(var(--sl-rank-d-rgb) / 50%); }
+.rank-glow-C { box-shadow: 0 0 16px rgb(var(--sl-rank-c-rgb) / 50%); }
+.rank-glow-B { box-shadow: 0 0 18px rgb(var(--sl-rank-b-rgb) / 50%); }
+.rank-glow-A { box-shadow: 0 0 18px rgb(var(--sl-rank-a-rgb) / 55%); }
+.rank-glow-S { box-shadow: 0 0 24px rgb(var(--sl-rank-s-rgb) / 70%); }
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-system-void);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-system-blue-dim);
+  border-radius: 4px;
+}
