@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { useAuth } from "../context/useAuth";
+import { useProfile } from "../hooks/useProfile";
 import { isOwner } from "../lib/owner";
 
 const baseTabs = [
@@ -13,8 +13,8 @@ const ownerOnlyTabs = [{ to: "/resumes", label: "Resume Maxing" }];
 const trailingTabs = [{ to: "/profile", label: "Profile" }];
 
 export default function NavBar() {
-  const { user } = useAuth();
-  const tabs = [...baseTabs, ...(isOwner(user) ? ownerOnlyTabs : []), ...trailingTabs];
+  const { data: profile } = useProfile();
+  const tabs = [...baseTabs, ...(isOwner(profile) ? ownerOnlyTabs : []), ...trailingTabs];
 
   return (
     <nav className="flex flex-wrap items-center justify-center gap-2 mb-8">

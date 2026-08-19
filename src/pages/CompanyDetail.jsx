@@ -5,13 +5,13 @@ import { skillRankForLevel } from "../lib/ranks";
 import { getCompany, companySkillReadiness, formatINR, resumeAlignmentScore } from "../lib/prep";
 import { resumeInfo, RESUME_SLUG } from "../data/resumes";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { useAuth } from "../context/useAuth";
+import { useProfile } from "../hooks/useProfile";
 import { isOwner } from "../lib/owner";
 
 export default function CompanyDetail() {
   const { id } = useParams();
   const { skillLevels } = useOutletContext();
-  const { user } = useAuth();
+  const { data: profile } = useProfile();
   const company = getCompany(id);
   const [checked, setChecked] = useLocalStorage(`ts-prep-${id}`, []);
 
@@ -112,7 +112,7 @@ export default function CompanyDetail() {
             ))}
           </ul>
 
-          {isOwner(user) ? (
+          {isOwner(profile) ? (
             <>
               <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-2">Which Resume to Send</p>
               <div className="border border-system-blue/40 bg-system-blue/5 rounded p-3">

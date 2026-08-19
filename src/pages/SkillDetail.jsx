@@ -1,7 +1,7 @@
 import { Link, useParams, useOutletContext } from "react-router-dom";
 import RankPill from "../components/RankPill";
-import { skillRankForLevel, proficiencyLabel } from "../lib/ranks";
-import { getSkill, companiesRequiringSkill, highestRequiredRank } from "../lib/prep";
+import { skillRankForLevel, proficiencyLabel, rankIndex } from "../lib/ranks";
+import { getSkill, skillUnlockCurve, nextMilestone } from "../lib/prep";
 
 export default function SkillDetail() {
   const { id } = useParams();
@@ -19,8 +19,10 @@ export default function SkillDetail() {
 
   const level = skillLevels[id] ?? skill.level;
   const currentRank = skillRankForLevel(level);
-  const ceiling = highestRequiredRank(id);
-  const requiredBy = [...companiesRequiringSkill(id)].sort((a, b) => (a.company.day ?? Infinity) - (b.company.day ?? Infinity));
+  const currentIdx = rankIndex(currentRank);
+  const curve = skillUnlockCurve(id);
+  const milestone = nextMilestone(id, level);
+  const total = curve[curve.length - 1].total;
 
   return (
     <div className="space-y-6">
@@ -34,13 +36,27 @@ export default function SkillDetail() {
             <p className="text-[10px] uppercase tracking-widest text-slate-500">{skill.category}</p>
             <h2 className="font-display text-2xl font-bold text-white system-glow-text">{skill.name}</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <RankPill rank={currentRank} label="Now" />
-            {ceiling && <RankPill rank={ceiling} label="Target" />}
-          </div>
+          <RankPill rank={currentRank} label="Now" />
         </div>
 
         <p className="text-sm text-slate-400 mb-4">{skill.why}</p>
+
+        {total > 0 && (
+          <p className="text-xs text-slate-500 mb-4">
+            {milestone ? (
+              <>
+                <span className="text-system-blue font-semibold">
+                  Reach {milestone.rank}-Rank → unlocks {milestone.newlyUnlockedCount} more compan
+                  {milestone.newlyUnlockedCount === 1 ? "y" : "ies"}
+                </span>{" "}
+                ({milestone.totalUnlockedAfter}/{total} covered at that rank). No assumption that you need the
+                hardest company's bar — see the full breakdown below and pick your own target.
+              </>
+            ) : (
+              <span className="text-rank-d font-semibold">Your current rank already covers every company that lists this skill.</span>
+            )}
+          </p>
+        )}
 
         <div className="flex items-center gap-3">
           <input
@@ -86,19 +102,35 @@ export default function SkillDetail() {
         </div>
 
         <div className="system-panel p-6">
-          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-3">Gates This Unlocks</p>
-          {requiredBy.length === 0 && <p className="text-sm text-slate-500 italic">No mapped companies require this yet.</p>}
-          <div className="space-y-2">
-            {requiredBy.map(({ company, requiredRank }) => (
-              <Link
-                key={company.id}
-                to={`/company/${company.id}`}
-                className="flex items-center justify-between border border-system-border bg-system-void/30 rounded px-3 py-2 hover:border-system-blue transition-colors group"
-              >
-                <span className="text-sm text-slate-200 group-hover:text-system-blue transition-colors">{company.name}</span>
-                <RankPill rank={requiredRank} />
-              </Link>
-            ))}
+          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Which Companies Need This</p>
+          <p className="text-[11px] text-slate-500 mb-3">Grouped by the rank they actually require — pick your own target.</p>
+          {total === 0 && <p className="text-sm text-slate-500 italic">No mapped companies require this yet.</p>}
+          <div className="space-y-4">
+            {curve
+              .filter((tier) => tier.newlyUnlocked.length > 0)
+              .map((tier) => (
+                <div key={tier.rank}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <RankPill rank={tier.rank} />
+                    <span className="text-[11px] text-slate-500">
+                      {tier.newlyUnlocked.length} compan{tier.newlyUnlocked.length === 1 ? "y" : "ies"}
+                      {rankIndex(tier.rank) === currentIdx && <span className="text-system-blue"> · your current rank</span>}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {tier.newlyUnlocked.map((company) => (
+                      <Link
+                        key={company.id}
+                        to={`/company/${company.id}`}
+                        className="flex items-center justify-between border border-system-border bg-system-void/30 rounded px-3 py-1.5 hover:border-system-blue transition-colors group"
+                      >
+                        <span className="text-sm text-slate-200 group-hover:text-system-blue transition-colors">{company.name}</span>
+                        <span className="text-[11px] text-slate-500">{company.role}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
           </div>
         </div>
       </div>

@@ -17,6 +17,17 @@ create table if not exists public.profiles (
   id         uuid primary key references auth.users(id) on delete cascade,
   email      text not null,
   name       text not null default 'Hunter',
+  -- Marks the single app-owner account (the only one allowed to see the 5
+  -- app-owned resume PDFs). Deliberately NOT an email hardcoded in client
+  -- code — that would ship your real email address in the public JS bundle
+  -- for no security benefit (the actual enforcement is the RLS policies
+  -- below, which check this column server-side; nobody can grant themselves
+  -- access by reading a string out of DevTools). Flip it via the SQL Editor
+  -- after creating your account — see the instructions at the bottom of
+  -- this file. The WITH CHECK on the update policy below makes it so a
+  -- normal client-side update (e.g. editing your display name) can never
+  -- change this column — only a direct SQL Editor command can.
+  is_owner   boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -29,7 +40,11 @@ create policy "profiles_select_own" on public.profiles
 
 drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own" on public.profiles
-  for update using (auth.uid() = id);
+  for update using (auth.uid() = id)
+  with check (
+    auth.uid() = id
+    and is_owner = (select p.is_owner from public.profiles p where p.id = auth.uid())
+  );
 
 -- Auto-create a profile row the moment someone signs up. This runs as the
 -- table owner (security definer), bypassing RLS for this one insert only —
@@ -186,7 +201,8 @@ create policy "resumes_delete_own" on storage.objects
 --    Storage UI (drag-and-drop) — that path uses the dashboard's own
 --    privileged access and bypasses these RLS policies entirely, so no
 --    client-side INSERT policy is needed or granted here. Only a read path
---    is opened, and only to the owner.
+--    is opened, and only to whoever has profiles.is_owner = true — checked
+--    server-side, nothing about "who owns this" lives in client code.
 -- ============================================================================
 
 insert into storage.buckets (id, name, public)
@@ -197,7 +213,7 @@ drop policy if exists "app_resumes_select_owner_only" on storage.objects;
 create policy "app_resumes_select_owner_only" on storage.objects
   for select using (
     bucket_id = 'app-resumes'
-    and auth.jwt() ->> 'email' = 'mjzeus1729@gmail.com'
+    and exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_owner = true)
   );
 
 -- ============================================================================
@@ -206,3 +222,12 @@ create policy "app_resumes_select_owner_only" on storage.objects
 -- select tablename, rowsecurity from pg_tables
 --   where schemaname = 'public'
 --   and tablename in ('profiles','user_skill_todos','user_company_prep','missions','user_resumes');
+
+-- ============================================================================
+-- ONE-TIME MANUAL STEP — run this yourself, separately, after signing up
+-- with whichever account should be the app owner. Not part of the block
+-- above on purpose: this is a privileged action, not routine setup, and the
+-- SQL Editor's connection has enough privilege to bypass the WITH CHECK
+-- above that blocks this exact update from the client app itself.
+-- ============================================================================
+-- update public.profiles set is_owner = true where email = 'your-official-email@example.com';

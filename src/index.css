@@ -91,6 +91,13 @@
 
 html {
   color-scheme: dark;
+  /* Every Tailwind text-* and spacing-* utility is rem-based off this root
+     size, so bumping it scales all text (and the whitespace around it)
+     uniformly across the whole app — a single-line fix instead of editing
+     every className. 120% keeps it relative to the browser's own default
+     rather than hardcoding a px value, which respects a user's own
+     accessibility font-size setting instead of overriding it. */
+  font-size: 120%;
 }
 
 body {
@@ -115,10 +122,10 @@ body {
     0 0 24px rgb(var(--sl-accent-rgb) / 10%),
     inset 0 0 40px rgb(var(--sl-accent-rgb) / 4%);
   clip-path: polygon(
-    0 12px, 12px 0,
-    calc(100% - 12px) 0, 100% 12px,
-    100% calc(100% - 12px), calc(100% - 12px) 100%,
-    12px 100%, 0 calc(100% - 12px)
+    0 14px, 14px 0,
+    calc(100% - 14px) 0, 100% 14px,
+    100% calc(100% - 14px), calc(100% - 14px) 100%,
+    14px 100%, 0 calc(100% - 14px)
   );
 }
 

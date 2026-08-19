@@ -4,14 +4,14 @@ import StatusWindow from "../components/StatusWindow";
 import CompanyCard from "../components/CompanyCard";
 import SkillGapCard from "../components/SkillGapCard";
 import MissionBoard from "../components/MissionBoard";
-import { companiesSortedByDay, skillGaps } from "../lib/prep";
+import { companiesSortedByDay, skillPriorities } from "../lib/prep";
 import { skillCatalog } from "../data/skills";
 
 export default function Home() {
   const { playerName, xp, missionStats, skillLevels, missions, addMission, setMissionStatus, removeMission } = useOutletContext();
 
   const priorityCompanies = useMemo(() => companiesSortedByDay().slice(0, 6), []);
-  const topGaps = useMemo(() => skillGaps(skillLevels).slice(0, 6), [skillLevels]);
+  const topPriorities = useMemo(() => skillPriorities(skillLevels).slice(0, 6), [skillLevels]);
 
   return (
     <div className="space-y-6">
@@ -35,10 +35,14 @@ export default function Home() {
 
         <div className="system-panel p-6">
           <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Skill Maxing</p>
-          <h3 className="font-display text-lg font-bold text-white mb-4">Biggest Skill Gaps</h3>
+          <h3 className="font-display text-lg font-bold text-white mb-1">Where to Focus Next</h3>
+          <p className="text-xs text-slate-500 mb-4">
+            Your next-highest-leverage step per skill — not a claim that you need top rank everywhere. Different
+            companies want different things; browse Company Specific Prep to see exactly what your own targets need.
+          </p>
           <div className="space-y-2.5">
-            {topGaps.map(({ skill, level, ceiling, gap }) => (
-              <SkillGapCard key={skill.id} skill={skill} level={level} ceiling={ceiling} gap={gap} />
+            {topPriorities.map(({ skill, level, currentRank, milestone }) => (
+              <SkillGapCard key={skill.id} skill={skill} level={level} currentRank={currentRank} milestone={milestone} />
             ))}
           </div>
         </div>
