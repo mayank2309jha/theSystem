@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
+import CTABanner from "../components/CTABanner";
 
 export default function Signup() {
   const { user, loading, signUp } = useAuth();
@@ -40,6 +41,14 @@ export default function Signup() {
           <p className="text-xs tracking-[0.4em] text-system-blue/60 uppercase mb-2">The System</p>
           <h1 className="font-display text-2xl font-black text-white system-glow-text">Awaken a Hunter</h1>
         </div>
+
+        <CTABanner
+          to="/try"
+          className="mb-6 py-4! text-base! border-system-gold text-system-gold! bg-system-gold/10 hover:bg-system-gold hover:text-system-void!"
+        >
+          Not ready to sign up? Try the free Resume Checker — no account needed →
+        </CTABanner>
+        <p className="text-center text-[11px] text-slate-600 -mt-4 mb-6">or create an account below for the full app</p>
 
         <form onSubmit={handleSubmit} className="system-panel p-6 space-y-4">
           <div>

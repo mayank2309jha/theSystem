@@ -1,4 +1,4 @@
-// Regenerates COMPANIES.md straight from src/data/companies.js so the doc can
+// Regenerates docs/COMPANIES.md straight from src/data/companies.js so the doc can
 // never drift from the app. Run after editing companies.js:
 //   node scripts/generate-companies-md.mjs
 import { companies } from "../src/data/companies.js";
@@ -54,5 +54,5 @@ for (const c of sorted) {
   out += `\n---\n\n`;
 }
 
-writeFileSync(new URL("../COMPANIES.md", import.meta.url), out);
-console.log(`Wrote COMPANIES.md — ${companies.length} companies.`);
+writeFileSync(new URL("../docs/COMPANIES.md", import.meta.url), out);
+console.log(`Wrote docs/COMPANIES.md — ${companies.length} companies.`);
