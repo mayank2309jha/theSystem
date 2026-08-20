@@ -11,6 +11,20 @@
       rel="stylesheet"
     />
     <title>THE SYSTEM // Placement Tracker</title>
+    <script>
+      // Applied synchronously, before anything paints, so there's no flash of
+      // the wrong theme on load. Mirrors the logic in src/hooks/useTheme.js —
+      // keep the two in sync if this ever changes.
+      (function () {
+        try {
+          var stored = localStorage.getItem("ts-theme");
+          var theme = stored || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

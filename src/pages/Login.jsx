@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
+import ThemeToggle from "../components/ThemeToggle";
 
 export default function Login() {
   const { user, loading, signIn } = useAuth();
@@ -31,6 +32,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
+      <ThemeToggle />
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <p className="text-xs tracking-[0.4em] text-system-blue/60 uppercase mb-2">The System</p>

@@ -11,14 +11,25 @@ to misunderstand this system, so this document keeps them clearly apart.
 by `src/data/resumeWeights.js`. Powers the "Resume Maxing" feature.
 
 **The input isn't detected — it's hand-authored.** Each of the 5 resume PDFs (SDE, SDE+Algo,
-Backend, ML, Non-Core Companies) was actually read in full, and for each of the 23 skills, a
-weight from 0 to 1 was manually assigned per resume based on what that resume's TECHNICAL SKILLS
-section and project bullets actually contain. Crucially, a skill genuinely **absent** from a
-resume gets **0**, not just "low" — e.g. `SDE + Algo.pdf` and `Backend.pdf` both drop the Machine
-Learning section entirely, so `ml-fundamentals`/`deep-learning`/`nlp`/`data-analysis` are all
-weighted 0 for those two variants. This is why, e.g., the DSA-forward resume scores 0% against
-purely ML-focused companies (Wipro, Accenture) in `docs/COMPANIES.md`'s data — that's the formula
-working correctly, not a bug.
+Backend, ML, Non-Core Companies) was actually read in full, and for each of the original ~20 core
+skills, a weight from 0 to 1 was manually assigned per resume based on what that resume's TECHNICAL
+SKILLS section and project bullets actually contain.
+
+*(Note on catalog IDs: the skill catalog grew from 23 to 101 skills for the subskill/todo tracking
+system — see `docs/System.md` — and that restructuring initially left `resumeWeights.js` and
+`companies.js` pointing at 8-9 flat skill ids that had been renamed or split, e.g. `dbms-sql`→`sql`,
+`system-design`→`hld`. This was a real, silently-degrading bug — caught and fixed by remapping every
+reference to its current catalog id; see `docs/CONTEXT.md` for the full list and how it was found.
+`resumeWeights.js` still only covers that original ~20-skill set by design, which remains fine since
+`companies.js` doesn't currently require any of the other ~80 catalog skills — it would only become a
+gap if a company's requirements are ever expanded to reference one of those without adding a weight
+for it too.)*
+
+Crucially, a skill genuinely **absent** from a resume gets **0**, not just "low" — e.g. `SDE +
+Algo.pdf` and `Backend.pdf` both drop the Machine Learning section entirely, so
+`ml-fundamentals`/`deep-learning`/`nlp`/`eda` are all weighted 0 for those two variants. This is why,
+e.g., the DSA-forward resume scores 0% against purely ML-focused companies (Wipro, Accenture) in
+`docs/COMPANIES.md`'s data — that's the formula working correctly, not a bug.
 
 A small set of skills (`resume-storytelling`, `hr-behavioral`, `aptitude`) are "flat weight"
 skills — every resume variant is assumed equally capable of them, since they're about how you talk
@@ -46,8 +57,11 @@ cost of not generalizing to any other resume — which is exactly why Engine B e
 
 **Where:** `src/lib/extractResumeSkills.js` (extraction) + `src/data/skillKeywords.js` (matching)
 feeding into the **same** `companyReadinessFromSkillLevels()` used for skill-based company
-readiness elsewhere in the app (see `docs/System.md`). Powers `/try` (public, no auth) and
-`/resume` (authenticated, private, persisted).
+readiness elsewhere in the app (see `docs/System.md`). Powers `/try` (public, no auth), `/resume`
+(authenticated, private, persisted), and **Resume Raid** (`/resume-raid`) — which runs this same
+extraction across *every* resume a user uploads and unions the per-skill results via `Math.max`,
+surfacing every skill claimed by at least one of their resumes rather than scoring one document
+against companies.
 
 This engine has to work on a document it's never seen before, from a stranger, with no time to
 hand-author anything. The whole pipeline runs **client-side**:
@@ -56,10 +70,10 @@ hand-author anything. The whole pipeline runs **client-side**:
    weight only loads for someone who actually uses a resume-checking feature) reads the PDF's raw
    text, page by page, entirely in the browser. For an uploaded `File` object
    (`detectSkillLevelsFromPdfFile`), or for an already-stored resume fetched via a signed URL
-   (`detectSkillLevelsFromPdfUrl`) on the authenticated My Resume page.
+   (`detectSkillLevelsFromPdfUrl`) on the authenticated My Resume and Resume Raid pages.
 2. **Keyword matching** — `detectSkillLevelsFromText()` lowercases the extracted text and, for
-   each of the 23 skills, counts how many **distinct** keywords from that skill's list
-   (`skillKeywords.js`) appear anywhere in the text. Counting distinct keywords rather than raw
+   each of the 101 skills in the catalog, counts how many **distinct** keywords from that skill's
+   list (`skillKeywords.js`) appear anywhere in the text. Counting distinct keywords rather than raw
    occurrences means one repeated buzzword can't fake high proficiency.
 3. **Level estimate** — match count maps onto a capped proficiency guess:
 

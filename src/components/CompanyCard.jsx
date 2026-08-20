@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import RankPill from "./RankPill";
-import { formatINR } from "../lib/prep";
+import { formatINR, companyReadinessFromSkillLevels } from "../lib/prep";
 
-export default function CompanyCard({ company }) {
+export default function CompanyCard({ company, skillLevels }) {
+  const readiness = skillLevels ? companyReadinessFromSkillLevels(company, skillLevels) : null;
+
   return (
     <Link
       to={`/company/${company.id}`}
@@ -19,6 +21,22 @@ export default function CompanyCard({ company }) {
           <span className="px-1.5 py-0.5 rounded border border-danger/50 text-danger">Unverified prep</span>
         )}
       </div>
+
+      {readiness !== null && (
+        <div className="mt-2.5">
+          <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-slate-500 mb-1">
+            <span>Your readiness</span>
+            <span className="text-system-blue font-display">{readiness}%</span>
+          </div>
+          <div className="h-1.5 w-full bg-system-void rounded-full overflow-hidden border border-system-border">
+            <div
+              className="h-full bg-gradient-to-r from-system-blue-dim to-system-blue transition-all"
+              style={{ width: `${readiness}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="flex items-end justify-between mt-3 pt-2 border-t border-system-border/60 text-[11px] text-slate-500">
         <span>{typeof company.day === "number" ? `Day ${company.day}` : "Day TBD"}</span>
         <span className="text-right leading-tight">

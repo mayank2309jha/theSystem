@@ -61,8 +61,8 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | A |
-| System Design (HLD) | A |
-| Distributed Systems | B |
+| High-Level Design (HLD / System Design) | A |
+| Microservices Architecture | B |
 | Resume & Project Storytelling | B |
 
 **Important projects to lead with:** Distributed Key-Value Cache; Real-Time Order Matching Engine; Search & Retrieval Engine
@@ -102,7 +102,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 |---|---|
 | Data Structures & Algorithms | B |
 | Classical ML Fundamentals | B |
-| Deep Learning & Transformers | B |
+| Deep Learning | B |
 | Computer Organization & Architecture | C |
 | Aptitude & Puzzles | C |
 
@@ -142,8 +142,8 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | C |
-| System Design (HLD) | C |
-| Operating Systems | C |
+| High-Level Design (HLD / System Design) | C |
+| Operating Systems Fundamentals | C |
 | HR & Behavioral Rounds | C |
 
 **Important projects to lead with:** Real-Time Order Matching Engine; PostgreSQL Index Advisor
@@ -178,7 +178,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | C |
-| DBMS & SQL | C |
+| SQL | C |
 | Resume & Project Storytelling | C |
 
 **Important projects to lead with:** PostgreSQL Index Advisor; Real-Time Order Matching Engine
@@ -245,7 +245,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | B |
-| Backend & API Development | C |
+| REST API Design | C |
 | Resume & Project Storytelling | C |
 
 **Important projects to lead with:** Real-Time Order Matching Engine; PostgreSQL Index Advisor
@@ -284,7 +284,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 
 | Skill | Required Rank |
 |---|---|
-| Data Analysis (Pandas/NumPy/EDA) | C |
+| Exploratory Data Analysis (EDA) | C |
 | Classical ML Fundamentals | C |
 
 **Important projects to lead with:** Impact of Label Noise on ML Generalization
@@ -319,7 +319,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Classical ML Fundamentals | C |
-| Data Analysis (Pandas/NumPy/EDA) | C |
+| Exploratory Data Analysis (EDA) | C |
 | HR & Behavioral Rounds | C |
 
 **Important projects to lead with:** Impact of Label Noise on ML Generalization
@@ -460,8 +460,8 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 
 | Skill | Required Rank |
 |---|---|
-| C / C++ Systems Programming | A |
-| Operating Systems | B |
+| C/C++ Systems Programming | A |
+| Operating Systems Fundamentals | B |
 | Multithreading & Concurrency | B |
 | Computer Organization & Architecture | C |
 
@@ -506,7 +506,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | C |
-| Backend & API Development | C |
+| REST API Design | C |
 
 **Important projects to lead with:** Real-Time Order Matching Engine
 
@@ -538,8 +538,8 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | C |
-| Operating Systems | C |
-| Deep Learning & Transformers | C |
+| Operating Systems Fundamentals | C |
+| Deep Learning | C |
 | Resume & Project Storytelling | B |
 
 **Important projects to lead with:** NETRA: Full-Stack News Aggregation & Personalization Platform; Search & Retrieval Engine; PostgreSQL Index Advisor
@@ -577,8 +577,8 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | C |
-| Docker, Kubernetes & Cloud Infra | C |
-| System Design (HLD) | C |
+| Docker | C |
+| High-Level Design (HLD / System Design) | C |
 
 **Important projects to lead with:** Distributed Key-Value Cache; PostgreSQL Index Advisor
 
@@ -647,8 +647,8 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 
 | Skill | Required Rank |
 |---|---|
-| C / C++ Systems Programming | B |
-| Operating Systems | B |
+| C/C++ Systems Programming | B |
+| Operating Systems Fundamentals | B |
 | Computer Organization & Architecture | C |
 
 **Important projects to lead with:** Distributed Key-Value Cache; Genome Indexing & Search Engine
@@ -754,7 +754,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | C |
-| System Design (HLD) | C |
+| High-Level Design (HLD / System Design) | C |
 
 **Important projects to lead with:** Real-Time Order Matching Engine; PostgreSQL Index Advisor
 
@@ -787,7 +787,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 |---|---|
 | Data Structures & Algorithms | B |
 | Aptitude & Puzzles | C |
-| C / C++ Systems Programming | C |
+| C/C++ Systems Programming | C |
 
 **Important projects to lead with:** Distributed Key-Value Cache; Real-Time Order Matching Engine
 
@@ -823,8 +823,8 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | B |
-| System Design (HLD) | C |
-| Backend & API Development | C |
+| High-Level Design (HLD / System Design) | C |
+| REST API Design | C |
 
 **Important projects to lead with:** Real-Time Order Matching Engine; PostgreSQL Index Advisor
 
@@ -856,8 +856,8 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | B |
-| Operating Systems | C |
-| DBMS & SQL | C |
+| Operating Systems Fundamentals | C |
+| SQL | C |
 | Computer Networks | C |
 
 **Important projects to lead with:** PostgreSQL Index Advisor; Real-Time Order Matching Engine
@@ -892,9 +892,9 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 
 | Skill | Required Rank |
 |---|---|
-| System Design (HLD) | C |
-| Operating Systems | C |
-| DBMS & SQL | C |
+| High-Level Design (HLD / System Design) | C |
+| Operating Systems Fundamentals | C |
+| SQL | C |
 
 **Important projects to lead with:** PostgreSQL Index Advisor; M.Tech Project: Game Theoretic Approaches for Security Planning
 
@@ -927,7 +927,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 
 | Skill | Required Rank |
 |---|---|
-| Docker, Kubernetes & Cloud Infra | C |
+| Docker | C |
 | Multithreading & Concurrency | C |
 | Python | D |
 
@@ -967,7 +967,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 |---|---|
 | Data Structures & Algorithms | C |
 | OOP Fundamentals | C |
-| System Design (HLD) | C |
+| High-Level Design (HLD / System Design) | C |
 | Aptitude & Puzzles | C |
 
 **Important projects to lead with:** Real-Time Order Matching Engine; PostgreSQL Index Advisor
@@ -1004,7 +1004,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Classical ML Fundamentals | C |
-| Data Analysis (Pandas/NumPy/EDA) | C |
+| Exploratory Data Analysis (EDA) | C |
 | Resume & Project Storytelling | C |
 
 **Important projects to lead with:** Impact of Label Noise on ML Generalization; Multi-Model Content Moderation & NLP Platform
@@ -1040,7 +1040,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Data Structures & Algorithms | C |
-| Backend & API Development | C |
+| REST API Design | C |
 
 **Important projects to lead with:** Real-Time Order Matching Engine; PostgreSQL Index Advisor
 
@@ -1105,9 +1105,9 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 
 | Skill | Required Rank |
 |---|---|
-| DBMS & SQL | C |
+| SQL | C |
 | OOP Fundamentals | D |
-| Deep Learning & Transformers | C |
+| Deep Learning | C |
 | Resume & Project Storytelling | C |
 
 **Important projects to lead with:** PostgreSQL Index Advisor; NETRA: Full-Stack News Aggregation & Personalization Platform; Impact of Label Noise on ML Generalization
@@ -1180,8 +1180,8 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 
 | Skill | Required Rank |
 |---|---|
-| Backend & API Development | C |
-| DBMS & SQL | C |
+| REST API Design | C |
+| SQL | C |
 | Data Structures & Algorithms | C |
 
 **Important projects to lead with:** PostgreSQL Index Advisor; Distributed Key-Value Cache; NETRA: Full-Stack News Aggregation & Personalization Platform
@@ -1213,7 +1213,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 
 | Skill | Required Rank |
 |---|---|
-| Deep Learning & Transformers | C |
+| Deep Learning | C |
 | Classical ML Fundamentals | C |
 | Resume & Project Storytelling | B |
 
@@ -1250,7 +1250,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Classical ML Fundamentals | C |
-| Deep Learning & Transformers | C |
+| Deep Learning | C |
 
 **Important projects to lead with:** Impact of Label Noise on ML Generalization; Multi-Model Content Moderation & NLP Platform
 
@@ -1281,8 +1281,8 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 
 | Skill | Required Rank |
 |---|---|
-| Deep Learning & Transformers | C |
-| Docker, Kubernetes & Cloud Infra | C |
+| Deep Learning | C |
+| Docker | C |
 
 **Important projects to lead with:** Multi-Model Content Moderation & NLP Platform; Distributed Key-Value Cache
 
@@ -1315,7 +1315,7 @@ Sourced from `Company_Placement_Profiles.xlsx`, `Placement Stats - Sheet1.pdf`, 
 | Skill | Required Rank |
 |---|---|
 | Resume & Project Storytelling | B |
-| Deep Learning & Transformers | C |
+| Deep Learning | C |
 | HR & Behavioral Rounds | C |
 
 **Important projects to lead with:** M.Tech Project: Game Theoretic Approaches for Security Planning; Multi-Model Content Moderation & NLP Platform

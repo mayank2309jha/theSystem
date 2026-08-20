@@ -59,8 +59,8 @@ Every company's skill requirements with their **weight** — the numeric importa
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | A | 5 |
-| System Design (HLD) | Core CS | A | 5 |
-| Distributed Systems | Systems | B | 4 |
+| High-Level Design (HLD / System Design) | Core CS | A | 5 |
+| Microservices Architecture | Distributed Systems | B | 4 |
 | Resume & Project Storytelling | Interview Craft | B | 4 |
 
 _Weight sum: 18 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -82,8 +82,8 @@ _Weight sum: 18 — a company's overall readiness score is the weight-average of
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | B | 4 |
 | Classical ML Fundamentals | Machine Learning | B | 4 |
-| Deep Learning & Transformers | Machine Learning | B | 4 |
-| Computer Organization & Architecture | Systems | C | 3 |
+| Deep Learning | Machine Learning | B | 4 |
+| Computer Organization & Architecture | Systems & OS | C | 3 |
 | Aptitude & Puzzles | Core CS | C | 3 |
 
 _Weight sum: 18 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -104,8 +104,8 @@ _Weight sum: 18 — a company's overall readiness score is the weight-average of
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | C | 3 |
-| System Design (HLD) | Core CS | C | 3 |
-| Operating Systems | Systems | C | 3 |
+| High-Level Design (HLD / System Design) | Core CS | C | 3 |
+| Operating Systems Fundamentals | Systems & OS | C | 3 |
 | HR & Behavioral Rounds | Interview Craft | C | 3 |
 
 _Weight sum: 12 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -126,7 +126,7 @@ _Weight sum: 12 — a company's overall readiness score is the weight-average of
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | C | 3 |
-| DBMS & SQL | Databases | C | 3 |
+| SQL | Languages | C | 3 |
 | Resume & Project Storytelling | Interview Craft | C | 3 |
 
 _Weight sum: 9 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -168,7 +168,7 @@ _Weight sum: 8 — a company's overall readiness score is the weight-average of 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | B | 4 |
-| Backend & API Development | Languages | C | 3 |
+| REST API Design | Backend & APIs | C | 3 |
 | Resume & Project Storytelling | Interview Craft | C | 3 |
 
 _Weight sum: 10 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -188,7 +188,7 @@ _Weight sum: 10 — a company's overall readiness score is the weight-average of
 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
-| Data Analysis (Pandas/NumPy/EDA) | Machine Learning | C | 3 |
+| Exploratory Data Analysis (EDA) | Data Engineering | C | 3 |
 | Classical ML Fundamentals | Machine Learning | C | 3 |
 
 _Weight sum: 6 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -209,7 +209,7 @@ _Weight sum: 6 — a company's overall readiness score is the weight-average of 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Classical ML Fundamentals | Machine Learning | C | 3 |
-| Data Analysis (Pandas/NumPy/EDA) | Machine Learning | C | 3 |
+| Exploratory Data Analysis (EDA) | Data Engineering | C | 3 |
 | HR & Behavioral Rounds | Interview Craft | C | 3 |
 
 _Weight sum: 9 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -293,10 +293,10 @@ _Weight sum: 14 — a company's overall readiness score is the weight-average of
 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
-| C / C++ Systems Programming | Systems | A | 5 |
-| Operating Systems | Systems | B | 4 |
-| Multithreading & Concurrency | Systems | B | 4 |
-| Computer Organization & Architecture | Systems | C | 3 |
+| C/C++ Systems Programming | Systems & OS | A | 5 |
+| Operating Systems Fundamentals | Systems & OS | B | 4 |
+| Multithreading & Concurrency | Systems & OS | B | 4 |
+| Computer Organization & Architecture | Systems & OS | C | 3 |
 
 _Weight sum: 16 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -316,7 +316,7 @@ _Weight sum: 16 — a company's overall readiness score is the weight-average of
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | C | 3 |
-| Backend & API Development | Languages | C | 3 |
+| REST API Design | Backend & APIs | C | 3 |
 
 _Weight sum: 6 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -337,8 +337,8 @@ _Weight sum: 6 — a company's overall readiness score is the weight-average of 
 |---|---|---|---|
 | Resume & Project Storytelling | Interview Craft | B | 4 |
 | Data Structures & Algorithms | Core CS | C | 3 |
-| Operating Systems | Systems | C | 3 |
-| Deep Learning & Transformers | Machine Learning | C | 3 |
+| Operating Systems Fundamentals | Systems & OS | C | 3 |
+| Deep Learning | Machine Learning | C | 3 |
 
 _Weight sum: 13 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -358,8 +358,8 @@ _Weight sum: 13 — a company's overall readiness score is the weight-average of
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | C | 3 |
-| Docker, Kubernetes & Cloud Infra | Systems | C | 3 |
-| System Design (HLD) | Core CS | C | 3 |
+| Docker | Cloud & DevOps | C | 3 |
+| High-Level Design (HLD / System Design) | Core CS | C | 3 |
 
 _Weight sum: 9 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -398,9 +398,9 @@ _Weight sum: 6 — a company's overall readiness score is the weight-average of 
 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
-| C / C++ Systems Programming | Systems | B | 4 |
-| Operating Systems | Systems | B | 4 |
-| Computer Organization & Architecture | Systems | C | 3 |
+| C/C++ Systems Programming | Systems & OS | B | 4 |
+| Operating Systems Fundamentals | Systems & OS | B | 4 |
+| Computer Organization & Architecture | Systems & OS | C | 3 |
 
 _Weight sum: 11 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -461,7 +461,7 @@ _Weight sum: 9 — a company's overall readiness score is the weight-average of 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | C | 3 |
-| System Design (HLD) | Core CS | C | 3 |
+| High-Level Design (HLD / System Design) | Core CS | C | 3 |
 
 _Weight sum: 6 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -482,7 +482,7 @@ _Weight sum: 6 — a company's overall readiness score is the weight-average of 
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | B | 4 |
 | Aptitude & Puzzles | Core CS | C | 3 |
-| C / C++ Systems Programming | Systems | C | 3 |
+| C/C++ Systems Programming | Systems & OS | C | 3 |
 
 _Weight sum: 10 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -502,8 +502,8 @@ _Weight sum: 10 — a company's overall readiness score is the weight-average of
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | B | 4 |
-| System Design (HLD) | Core CS | C | 3 |
-| Backend & API Development | Languages | C | 3 |
+| High-Level Design (HLD / System Design) | Core CS | C | 3 |
+| REST API Design | Backend & APIs | C | 3 |
 
 _Weight sum: 10 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -523,9 +523,9 @@ _Weight sum: 10 — a company's overall readiness score is the weight-average of
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | B | 4 |
-| Operating Systems | Systems | C | 3 |
-| DBMS & SQL | Databases | C | 3 |
-| Computer Networks | Systems | C | 3 |
+| Operating Systems Fundamentals | Systems & OS | C | 3 |
+| SQL | Languages | C | 3 |
+| Computer Networks | Systems & OS | C | 3 |
 
 _Weight sum: 13 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -544,9 +544,9 @@ _Weight sum: 13 — a company's overall readiness score is the weight-average of
 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
-| System Design (HLD) | Core CS | C | 3 |
-| Operating Systems | Systems | C | 3 |
-| DBMS & SQL | Databases | C | 3 |
+| High-Level Design (HLD / System Design) | Core CS | C | 3 |
+| Operating Systems Fundamentals | Systems & OS | C | 3 |
+| SQL | Languages | C | 3 |
 
 _Weight sum: 9 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -565,8 +565,8 @@ _Weight sum: 9 — a company's overall readiness score is the weight-average of 
 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
-| Docker, Kubernetes & Cloud Infra | Systems | C | 3 |
-| Multithreading & Concurrency | Systems | C | 3 |
+| Docker | Cloud & DevOps | C | 3 |
+| Multithreading & Concurrency | Systems & OS | C | 3 |
 | Python | Languages | D | 2 |
 
 _Weight sum: 8 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -588,7 +588,7 @@ _Weight sum: 8 — a company's overall readiness score is the weight-average of 
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | C | 3 |
 | OOP Fundamentals | Core CS | C | 3 |
-| System Design (HLD) | Core CS | C | 3 |
+| High-Level Design (HLD / System Design) | Core CS | C | 3 |
 | Aptitude & Puzzles | Core CS | C | 3 |
 
 _Weight sum: 12 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -609,7 +609,7 @@ _Weight sum: 12 — a company's overall readiness score is the weight-average of
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Classical ML Fundamentals | Machine Learning | C | 3 |
-| Data Analysis (Pandas/NumPy/EDA) | Machine Learning | C | 3 |
+| Exploratory Data Analysis (EDA) | Data Engineering | C | 3 |
 | Resume & Project Storytelling | Interview Craft | C | 3 |
 
 _Weight sum: 9 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -630,7 +630,7 @@ _Weight sum: 9 — a company's overall readiness score is the weight-average of 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Data Structures & Algorithms | Core CS | C | 3 |
-| Backend & API Development | Languages | C | 3 |
+| REST API Design | Backend & APIs | C | 3 |
 
 _Weight sum: 6 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -669,8 +669,8 @@ _Weight sum: 6 — a company's overall readiness score is the weight-average of 
 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
-| DBMS & SQL | Databases | C | 3 |
-| Deep Learning & Transformers | Machine Learning | C | 3 |
+| SQL | Languages | C | 3 |
+| Deep Learning | Machine Learning | C | 3 |
 | Resume & Project Storytelling | Interview Craft | C | 3 |
 | OOP Fundamentals | Core CS | D | 2 |
 
@@ -693,7 +693,7 @@ _Weight sum: 11 — a company's overall readiness score is the weight-average of
 |---|---|---|---|
 | Resume & Project Storytelling | Interview Craft | C | 3 |
 | Aptitude & Puzzles | Core CS | C | 3 |
-| Computer Networks | Systems | D | 2 |
+| Computer Networks | Systems & OS | D | 2 |
 
 _Weight sum: 8 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -712,8 +712,8 @@ _Weight sum: 8 — a company's overall readiness score is the weight-average of 
 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
-| Backend & API Development | Languages | C | 3 |
-| DBMS & SQL | Databases | C | 3 |
+| REST API Design | Backend & APIs | C | 3 |
+| SQL | Languages | C | 3 |
 | Data Structures & Algorithms | Core CS | C | 3 |
 
 _Weight sum: 9 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -734,7 +734,7 @@ _Weight sum: 9 — a company's overall readiness score is the weight-average of 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Resume & Project Storytelling | Interview Craft | B | 4 |
-| Deep Learning & Transformers | Machine Learning | C | 3 |
+| Deep Learning | Machine Learning | C | 3 |
 | Classical ML Fundamentals | Machine Learning | C | 3 |
 
 _Weight sum: 10 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
@@ -755,7 +755,7 @@ _Weight sum: 10 — a company's overall readiness score is the weight-average of
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Classical ML Fundamentals | Machine Learning | C | 3 |
-| Deep Learning & Transformers | Machine Learning | C | 3 |
+| Deep Learning | Machine Learning | C | 3 |
 
 _Weight sum: 6 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -774,8 +774,8 @@ _Weight sum: 6 — a company's overall readiness score is the weight-average of 
 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
-| Deep Learning & Transformers | Machine Learning | C | 3 |
-| Docker, Kubernetes & Cloud Infra | Systems | C | 3 |
+| Deep Learning | Machine Learning | C | 3 |
+| Docker | Cloud & DevOps | C | 3 |
 
 _Weight sum: 6 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._
 
@@ -795,7 +795,7 @@ _Weight sum: 6 — a company's overall readiness score is the weight-average of 
 | Skill | Category | Required Rank | Weight |
 |---|---|---|---|
 | Resume & Project Storytelling | Interview Craft | B | 4 |
-| Deep Learning & Transformers | Machine Learning | C | 3 |
+| Deep Learning | Machine Learning | C | 3 |
 | HR & Behavioral Rounds | Interview Craft | C | 3 |
 
 _Weight sum: 10 — a company's overall readiness score is the weight-average of per-skill progress across these rows (see docs/System.md)._

@@ -19,20 +19,30 @@ it is.
 
 ## What it does
 
-- **Home** — a dashboard: current hunter rank (computed from cleared
-  missions' XP), the nearest companies by placement day, a goal-agnostic
-  "Where to Focus Next" panel (next achievable skill milestone, not an
-  assumed top-tier target), and a personal job-application tracker (Mission
-  Board).
+- **Home** — a dashboard: current Hunter Rank + **Level (1–100)** ("power
+  scaling" — see below), a day-by-day progress graph against an even pace to
+  Level 100, the nearest companies by placement day, a goal-agnostic "Where
+  to Focus Next" panel (next achievable skill milestone, not an assumed
+  top-tier target), and a personal job-application tracker (Mission Board).
 - **Company Specific Prep** — 36 companies from the 2025 placement season,
   each with required skills (per-skill target rank), DSA difficulty, core CS
   subjects to prepare, which projects to lead with, real interview-round
   breakdowns where a senior actually reported them, and a checkable prep
   roadmap.
-- **Skill Maxing** — 23 skills spanning DSA, systems, ML, databases,
-  interview craft, etc. Every account starts every skill at E-Rank. Each
-  skill's page shows the full breakdown of which companies need it, grouped
-  by the rank they actually require.
+- **Skill Maxing** — 101 skills (React, HLD, LLD, Node, Postgres, and so on)
+  spanning DSA, systems, ML, databases, cloud/devops, interview craft, etc.,
+  each broken down into subskills (e.g. React → React Hooks, React Router)
+  with concrete proof-of-skill todos under every subskill. Every account
+  starts every skill at E-Rank. Each skill's page shows a proficiency
+  slider, the checkable subskill/todo list, a per-skill progress chart, and
+  the full breakdown of which companies need it grouped by the rank they
+  actually require.
+- **Resume Raid** (`/resume-raid`, every authenticated account) — upload as
+  many resumes as you have (different variants, old drafts). Scans every one
+  of them for mentioned projects, coursework, and technologies, unions the
+  results, and surfaces every skill you've *claimed* on paper — each with a
+  one-click link into that skill's subskill checklist to actually verify it,
+  and a "Start Tracking" button to seed it as a tracked skill.
 - **Resume Compatibility Checker, two ways:**
   - **Public, no account** (`/try`) — upload any resume, scored against all
     36 companies, entirely client-side (PDF text extraction + keyword
@@ -46,8 +56,15 @@ it is.
   (more precise than keyword detection, since these 5 documents are known
   and were read in full rather than guessed at).
 - **Mission Board** — your own job-application tracker, separate from the
-  reference company database. Clearing a mission awards XP toward Hunter
-  Rank.
+  reference company database. Clearing a mission still awards XP (shown as a
+  stat on Home) — as of the Level system redesign, XP no longer drives the
+  Hunter Rank badge itself; see [`docs/System.md`](./docs/System.md).
+- **Contest rating DSA track** — self-report your rating on one platform
+  (Codeforces/CodeChef/LeetCode) on `/profile`; each company's DSA
+  requirement then also shows an estimated rating bar for that platform
+  (derived from the company's existing rank requirement, not a real
+  per-company survey number — disclosed as such), with a "clear"/"to go"
+  comparison against your own.
 
 ## Full documentation set
 
@@ -102,18 +119,25 @@ GitHub-connected for auto-deploy on push to `main`.
 src/
   data/            Static content — the actual placement/resume/skill knowledge base
     companies.js      36 companies: role, CTC, skills required, rounds, prep tips
-    skills.js         23 skills: why it matters, roadmap, resources
-    skillKeywords.js  keyword lists the resume checkers match uploaded text against
+    skills.js         thin re-export of skills/index.js (kept so old imports still work)
+    skills/           101 skills across 17 category files, aggregated via index.js — each
+                      skill has subskills, each subskill has proof-of-skill todos (324
+                      subskills / 648 todos total; see docs/CONTEXT.md for the honest
+                      subskill-depth gap against the ~10/skill target)
+    skillKeywords.js  keyword lists the resume checkers (and Resume Raid) match uploaded text against
     resumes.js        resume metadata + filename<->slug mapping
     resumeWeights.js  per-resume skill-weight tables + domain bonuses
     seed.js           Mission Board constants (types/statuses/XP table)
 
   lib/             Pure functions — no React, no state
-    ranks.js              E-S rank math: XP thresholds, skill-level->rank bands, rank gaps
-    prep.js                almost all scoring/ranking math: company readiness, resume
-                           alignment, skill-unlock curves — see docs/System.md
+    ranks.js              E-S rank math: XP thresholds (legacy path), skill-level/Level->rank
+                          bands, rank gaps
+    prep.js                almost all scoring/ranking math: hunterLevel (the Level 1-100
+                           formula), company readiness, resume alignment, skill-unlock
+                           curves — see docs/System.md
     owner.js               isOwner(profile) — DB-driven, never a hardcoded identity
-    extractResumeSkills.js pdf.js text extraction (lazy-loaded) + keyword scoring glue
+    extractResumeSkills.js pdf.js text extraction (lazy-loaded) + keyword scoring glue,
+                           used by /try, /resume, and Resume Raid
     appResumes.js          signed-URL fetch for the 5 owner-only app resumes
     supabaseClient.js      Supabase client from env vars
 
@@ -121,24 +145,36 @@ src/
                     files specifically to satisfy a react-refresh lint rule
 
   hooks/
-    useLocalStorage.js  generic localStorage-backed useState (key-reactive, see below)
+    useLocalStorage.js  generic localStorage-backed useState (key-reactive) — now only used
+                        as a one-time read source for migrating pre-2026-08-20 local
+                        progress into the account the first time each hook below finds
+                        zero rows for a user; no longer the source of truth for anything
     useProfile.js       React Query hook for the profiles table
     useResume.js        React Query hook for private resume upload/replace/delete
+    useRaidResumes.js   React Query hook for multi-resume CRUD (Resume Raid)
+    useSkillLevels.js   React Query hook for the skill-proficiency slider (user_skill_levels)
+    useSkillTodos.js    React Query hook for subskill/todo completions (user_skill_todos)
+    useCompanyPrep.js   React Query hook for company prep-checklists (user_company_prep)
+    useMissions.js      React Query hook for the Mission Board (missions)
+    useLevelHistory.js  React Query hook for day-by-day Level snapshots (user_level_history)
 
   components/       Presentational + small-interaction pieces
     Layout.jsx, NavBar.jsx                shell + tab navigation (owner-gated tabs)
     ProtectedRoute.jsx, OwnerRoute.jsx     route guards
-    StatusWindow.jsx, RankTrack.jsx, RankBadge.jsx, RankPill.jsx   rank UI
+    StatusWindow.jsx, RankTrack.jsx, RankBadge.jsx, RankPill.jsx   rank/level UI
+    ProgressChart.jsx                     hand-rolled inline SVG line chart — Level over
+                                          time vs. an even-pace reference line
     CompanyCard.jsx, SkillGapCard.jsx, CompanyReadinessTable.jsx   list/result cards
     MissionBoard.jsx, MissionCard.jsx     personal job tracker
     ResumeDropzone.jsx, OpenResumeButton.jsx, CTABanner.jsx        resume-flow pieces
 
-  pages/            One per route (see below)
+  pages/            One per route (see below), including ResumeRaid.jsx
 
   index.css         Tailwind entry + the entire color-palette system (see below)
-  App.jsx           Router setup + all global state (skill levels, missions — still
-                    localStorage-backed, namespaced per user id; see docs/CONTEXT.md
-                    for what's NOT yet migrated to the database)
+  App.jsx           Router setup + all global state, sourced from the account-backed hooks
+                    below (skill levels, missions, subskill-todo completions, company-prep
+                    checklists, level history — all Supabase/RLS-backed as of the
+                    2026-08-20 persistence migration, see docs/CONTEXT.md)
 ```
 
 ### Routing
@@ -152,6 +188,7 @@ src/
 /skills, /skill/:id        SkillMaxing/Detail  skill tree
 /profile                   Profile             name/email/logout
 /resume                    Resume              private resume upload — every account
+/resume-raid               ResumeRaid          multi-resume upload + claimed-skills scan
 
 /resumes, /resume/:slug    ResumeMaxing/Detail  owner account only (OwnerRoute-gated)
 ```
@@ -163,14 +200,20 @@ state (profile, resume) goes through React Query hooks.
 
 ### The rank system (`lib/ranks.js`) and scoring (`lib/prep.js`)
 
-Full formulas in [`docs/System.md`](./docs/System.md). Short version: Hunter Rank comes from
-cumulative Mission Board XP against fixed thresholds; skill proficiency is a 0–100 number mapped
-onto the same E→S vocabulary via 6 equal bands; company readiness is an importance-weighted
-average of per-skill progress (importance = required rank's position in that ladder, so an
+Full formulas in [`docs/System.md`](./docs/System.md). Short version: **Level** (1–100, "power
+scaling") is derived from how many proof-of-skill todos you've checked off across the whole
+101-skill catalog out of the total available — `hunterLevel(subskillTodos)` in `lib/prep.js`, floor
+of 1 so a fresh account never reads "Level 0". The Hunter Rank badge shown on Home is that same
+Level mapped onto the E→S vocabulary via `skillRankForLevel`. Mission Board XP still accumulates
+and displays as its own stat, but no longer drives the rank badge — that's the Level system's job
+now. Separately, skill proficiency is still a manually-set 0–100 slider per skill, mapped onto the
+same E→S vocabulary via 6 equal bands; company readiness is an importance-weighted average of
+per-skill progress against that slider (importance = required rank's position in the ladder, so an
 A-Rank requirement counts more than a D-Rank one). The same core function
 (`companyReadinessFromSkillLevels`) powers both the manually-set skill-slider readiness view *and*
-both resume checkers — see [`docs/ResumetoCompany.md`](./docs/ResumetoCompany.md) for how an
-uploaded PDF becomes a skill-level map in the first place.
+both resume checkers *and* Resume Raid's claimed-skill detection — see
+[`docs/ResumetoCompany.md`](./docs/ResumetoCompany.md) for how an uploaded PDF becomes a skill-level
+map in the first place.
 
 ### Privacy & security model
 
@@ -195,6 +238,15 @@ cool blue→teal→indigo→violet E→A rank ladder, with two warm colors used 
 accents — Opulent Gold for S-Rank/CTC/XP, Deep Crimson for Failed/critical/unverified states. To
 re-theme: edit the hex values (and `-rgb` triplet counterparts) in that one block.
 
+**Dark/light mode**: a full second "Regal Light" palette lives under `:root[data-theme="light"]` in
+the same block, toggled via the sun/moon button (`ThemeToggle.jsx` — inline next to Log Out on
+authenticated pages, fixed-corner on Login/Signup/Try) and persisted to `localStorage` (device-level
+preference, not synced to the account). **Not every component uses the theme tokens** — a lot of
+existing className usage is Tailwind's stock `text-white`/`text-slate-100..600`/`border-slate-600`
+directly, so light mode also overrides those specific classes further down `index.css`; adding a new
+hardcoded gray class anywhere needs a matching override there or it won't re-theme. See
+`docs/CONTEXT.md` for the full reasoning and the rank-color contrast adjustments this required.
+
 ---
 
 ## Running it
@@ -209,7 +261,12 @@ npm run lint      # oxlint
 ```
 
 Database setup: run `supabase/schema.sql` in full, once, in your Supabase project's SQL Editor —
-it's idempotent-ish and safe to re-run after edits.
+it's idempotent-ish and safe to re-run after edits. **If you already ran it before 2026-08-20's
+persistence migration, re-run it once more** — it added `user_skill_levels` and
+`user_level_history` (skill-slider values and the Level graph's day-by-day history) plus
+`profiles.contest_platform`/`contest_rating` (the DSA contest-rating track), and none of that will
+exist in your project until you do. `user_skill_todos`/`user_company_prep`/`missions` already
+existed from Phase A.
 
 Regenerating the auto-generated docs after editing `src/data/companies.js`:
 
@@ -241,20 +298,38 @@ now that GitHub is connected.
    sharing one scoring core with the rest of the app.
 7. Full documentation set written (`docs/`), including a context-recovery doc for picking this
    project back up with no memory of how it got here.
+8. Expanded the skill catalog from 23 to **101 skills** (324 subskills, 648 proof-of-skill todos),
+   restructured `SkillDetail` around a checkable subskill/todo list, replaced XP-driven Hunter Rank
+   with a todo-completion-driven **Level system (1–100)**, added day-by-day progress graphs (Home
+   + per-skill), built **Resume Raid** (`/resume-raid`) for scanning multiple resumes into one
+   claimed-skills list, and fixed a company-prep-checklist namespacing bug found along the way.
+9. Found and fixed a real regression from step 8: the catalog restructuring silently broke 23/36
+   companies' skill requirements and Resume Raid's keyword detection (stale/missing skill ids) —
+   see `docs/CONTEXT.md` for the full incident writeup. Added a search bar to Skill Maxing, a
+   readiness % on every company card, and **migrated skill levels, subskill-todo completions,
+   company-prep checklists, missions, and level history off localStorage onto Supabase** so
+   progress follows the account across devices — `useSkillLevels`/`useSkillTodos`/`useCompanyPrep`/
+   `useMissions`/`useLevelHistory`, each with a one-time pull of any leftover local progress into
+   the account the first time it finds zero DB rows. Also built a **self-reported contest-rating DSA
+   track** (Codeforces/CodeChef/LeetCode) — required ratings are an explicit estimate derived from
+   each company's existing DSA rank, not invented data. **Requires re-running `supabase/schema.sql`**
+   (new tables + `profiles` columns) before either of these takes effect — see "Running it" above.
 
 ## Roadmap / possible next steps
 
 Nothing below is committed — gaps and ideas worth considering as the site keeps evolving. Full
 detail on all of these in `docs/CONTEXT.md`'s "not built yet" section:
 
-- **Company prep checklists aren't namespaced per user** on the shared-browser localStorage layer
-  (missions and skill-levels are; this one was missed) — a real, known gap, not yet fixed.
-- **Skill → Subskill → Todo proficiency redesign** was planned once but never executed — skill
-  proficiency is still a directly-set slider, not derived from checkable evidence.
-- **Progress-over-time graphs** (overall readiness on Home, per-skill on Skill Detail, dated
-  2026-08-18 → 2026-11-30) — requested, not yet built.
-- Migrate missions/skill-levels off `localStorage` onto Supabase properly (currently just
-  per-user-namespaced as an interim measure).
+- **Subskill depth falls short of spec on most of the 101 skills** — 324 subskills total, average
+  3.2/skill, against an explicit ~10/skill ask. `dsa` (11) and `hld` (10) already meet the bar;
+  most others (GraphQL, MySQL, MongoDB, TDD, and more) currently sit at 1–2. The single
+  highest-value next step.
+- **Subskill `weight` isn't wired to anything yet** — each subskill carries a `weight` field for a
+  future "derive skill % from weighted subskill completion" formula, but skill proficiency is still
+  the manually-set slider, unrelated to subskill/todo completion.
+- **Per-skill historical progress trails aren't tracked** — only the aggregate `levelHistory` (used
+  by Home's chart) is; SkillDetail's chart shows a single "today" point, a deliberate scope
+  trade-off, not an oversight.
 - Revisit the resume-alignment weight tables and keyword lists periodically — both are
   judgment-call heuristics that should be re-checked against real usage.
 - Expand company coverage as more interview reports come in (several are `verified: false`).

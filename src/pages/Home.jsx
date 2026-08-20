@@ -53,7 +53,7 @@ export default function Home() {
           <h3 className="font-display text-lg font-bold text-white mb-4">Nearest Quests (by Placement Day)</h3>
           <div className="space-y-2.5">
             {priorityCompanies.map((c) => (
-              <CompanyCard key={c.id} company={c} />
+              <CompanyCard key={c.id} company={c} skillLevels={skillLevels} />
             ))}
           </div>
         </div>

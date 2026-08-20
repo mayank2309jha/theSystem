@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import NavBar from "./NavBar";
+import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "../context/useAuth";
 
 export default function Layout(props) {
@@ -7,7 +8,8 @@ export default function Layout(props) {
 
   return (
     <div className="min-h-screen px-4 py-8 sm:px-8 max-w-6xl mx-auto">
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-end items-center gap-3 mb-2">
+        <ThemeToggle variant="inline" />
         <button
           onClick={signOut}
           className="text-[10px] font-display uppercase tracking-widest text-slate-500 hover:text-danger transition-colors"

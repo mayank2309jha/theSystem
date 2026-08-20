@@ -150,7 +150,17 @@ resume-to-company compatibility checker.
        "they are level 1 right now." Fixed by driving Level from `subskillTodos` completion count
        instead (a genuinely-earned signal, 0 checked = Level 1) — verified live. If this ever gets
        touched again, do NOT revert to a skill-level-average basis without re-deriving why that's
-       wrong. `skillRankForLevel(level)` still applies on top for the E-S rank label, unchanged.
+       wrong. `skillRankForLevel(level)` still applies on top for the E-S rank label — **and this
+       means the Hunter Rank badge on Status Window is now Level-driven, not XP-driven.**
+       `StatusWindow.jsx` calls `skillRankForLevel(level)`, not `getRankForXP(xp)`; `RankTrack` is
+       only ever invoked with the `level` prop now (its `xp` code path in `ranks.js`/`RankTrack.jsx`
+       still exists and still works, just currently unreachable from the UI). Mission Board XP still
+       accumulates and still displays as its own "Total XP" stat on Home, but no longer determines
+       the rank badge or rank-track progress bar — that's a real behavior change from the original
+       spec (`docs/System.md` used to document Hunter Rank as purely XP-driven; it's been corrected
+       to describe this). Don't "fix" `StatusWindow` back to XP-driven without confirming that's
+       actually wanted — the Level system was built specifically to replace XP as the headline
+       progress number.
      - **Resume Raid** (`/resume-raid`, all authenticated users): upload *multiple* resumes (new
        `user_raid_resumes` table, no unique-per-user constraint, unlike `user_resumes`'s single
        "My Resume" slot) into the same private `resumes` bucket under `{user_id}/raid/{id}.pdf`
@@ -175,6 +185,155 @@ resume-to-company compatibility checker.
        the "known issue" flagged in the previous session — don't reintroduce a page-local
        `useLocalStorage` call for anything that needs to be user-isolated; put it in `App.jsx`.
 
+5. **Critical regression found and fixed while updating docs (2026-08-20, later same day).** The
+   101-skill catalog restructuring in the entry above silently broke cross-references: `companies.js`
+   (23/36 companies, i.e. most of them), `resumeWeights.js` (all 5 resume variants), and
+   `skillKeywords.js` referenced 9 flat skill ids that no longer existed after the catalog was
+   split/renamed (`system-design`→`hld`, `distributed-systems`→`microservices`, `os`→`os-fundamentals`,
+   `data-analysis`→`eda`, `backend-apis`→`rest-api-design`, `dbms-sql`→`sql`, `networks`→`computer-networks`,
+   `cloud-infra`→`docker`, `react-frontend`→`react`). Effect: for those 23 companies,
+   `getSkill(requiredSkillId)` silently returned `undefined` — the Company Detail page showed a raw
+   broken id instead of the skill name and linked to a dead "Unknown skill" page, and that
+   requirement could never be satisfied (its skill level was permanently stuck at the `?? 0`
+   fallback) — degrading company-readiness scoring app-wide without any visible error or crash. Same
+   root cause degraded Resume Maxing (`resumeAlignmentScore`) for the same skills across all 5
+   resumes. **Fixed** by remapping the 8-9 stale ids to their closest current-catalog equivalent in
+   all three files (verified zero orphaned ids remain via script, `docs/COMPANIES.md`/`docs/Company.md`
+   regenerated to match). Separately, `skillKeywords.js` only ever had entries for the original 23
+   skills — meaning Resume Raid (built in the same session, same entry above) could only ever detect
+   ~21 of the 101 catalog skills from an uploaded resume, no matter what was in it. Extended
+   `skillKeywords.js` to cover all 101 skills: the original 21 (renamed per the mapping above, and a
+   few narrowed — e.g. `docker`'s old cloud-infra-era keywords like "kubernetes"/"aws"/"terraform"
+   were removed now that those each have their own dedicated entry, to avoid one upload inflating
+   multiple skills off the same keyword) stay hand-curated; the other ~80 are auto-derived from each
+   skill's name + subskill names — a first pass, not hand-tuned, and the next thing worth revisiting
+   if Resume Raid's detections look off for a specific skill.
+   - **Lesson for next time a skill catalog restructuring happens:** grep every other data file for
+     the old flat skill ids before considering the restructuring done — `companies.js` and
+     `resumeWeights.js` don't import from `skills.js` in any way that would make a stale reference
+     fail loudly (JS objects, no schema/type validation), so this kind of breakage is silent by
+     construction. `npm run build`/`npm run lint` passing is not sufficient evidence that
+     cross-file id references are intact.
+
+6. **Account-backed persistence + more bug-hunting (2026-08-20, later still).** User asked for a
+   search bar on Skill Maxing, an at-a-glance skill readiness view on Company Specific Prep, for
+   progress to actually save across devices, a contest-rating-based DSA track, and thoughts on how
+   to measure success/progress — mid-turn, while the doc-update/bug-fix work above was still in
+   flight.
+   - **Search bar** (`SkillMaxing.jsx`): filters by skill name, category, or subskill name.
+   - **Company readiness at a glance**: `CompanyCard.jsx` now takes an optional `skillLevels` prop
+     and renders a readiness % bar (reuses `companyReadinessFromSkillLevels`, the same function the
+     resume checkers use) — shown on both Home's "Nearest Quests" and the full Company Specific Prep
+     list, not just after clicking into a company (which already showed the full per-skill breakdown
+     and still does).
+   - **Persistence migration (the big one)**: skill-proficiency sliders, subskill-todo completions,
+     company-prep checklists, missions, and level history all moved from per-user-namespaced
+     `localStorage` onto Supabase (`user_skill_levels` [new table], `user_skill_todos`,
+     `user_company_prep`, `missions`, `user_level_history` [new table]) — five new hooks
+     (`useSkillLevels`, `useSkillTodos`, `useCompanyPrep`, `useMissions`, `useLevelHistory`), same
+     `@tanstack/react-query` + Supabase pattern as the pre-existing `useProfile`/`useResume`. Each
+     hook does a **one-time migration**: the first time it finds zero DB rows for the current user,
+     it reads that user's old localStorage key (if any) and pushes it up once, so nobody's existing
+     progress silently vanishes on upgrade. `App.jsx`'s `AppRoutes` no longer touches
+     `useLocalStorage` at all for this state — `useLocalStorage.js` itself is kept only as the
+     one-time migration read source inside these hooks.
+     - **Real bug caught during this work, not by inspection — by actually testing it**: the first
+       version of `useSkillTodos`'s and `useCompanyPrep`'s toggle mutations decided INSERT-vs-DELETE
+       by reading `queryClient.getQueryData(queryKey)` *inside* `mutationFn`. TanStack Query runs
+       `onMutate` (the optimistic update) **before** `mutationFn` — so by the time `mutationFn` ran,
+       the optimistic flip had already landed in the cache, and reading "current state" there
+       actually read the *new*, already-toggled state, causing every toggle to fire the *opposite*
+       DB operation (checking a box for the first time fired a DELETE, not an INSERT). This was
+       silent — no console error, no crash, `npm run build`/`lint` both passed — and was only caught
+       by an actual Playwright test that checked a box, then logged into the same account from a
+       **completely separate, zero-localStorage browser context** and confirmed the checkbox
+       state actually round-tripped through the database. It didn't, on the first attempt. Fixed by
+       capturing `wasChecked` once, at click time (before either `onMutate` or `mutationFn` run),
+       and threading that captured value through as a mutation variable instead of letting
+       `mutationFn` re-derive it. **Lesson: for any optimistic-update mutation whose server call
+       branches on "was this already true," capture that boolean before calling `.mutate()` —
+       never let the mutation function re-read cache state to decide its own branch**, and don't
+       trust a mutation is correct just because the optimistic UI looks right after one click — a
+       single click can look correct optimistically while doing the wrong thing server-side, only
+       visible by checking the actual persisted state from a separate session.
+     - **`user_skill_levels` and `user_level_history` are BRAND NEW tables** — they exist in
+       `supabase/schema.sql` now but **not yet in the live Supabase project**, since there's no tool
+       available to run SQL against it directly; only the user can do that (Supabase Dashboard → SQL
+       Editor → paste the whole file → Run — it's idempotent-ish, safe to re-run). Verified via
+       Playwright that hitting these missing tables fails as a clean 404 from PostgREST (React Query
+       swallows it, UI falls back to catalog defaults — no crash, but silent non-persistence) — so
+       **skill-slider values and the Level/progress graph history will NOT actually persist across
+       devices until the user re-runs the updated schema.sql.** `user_skill_todos`/`user_company_prep`
+       already existed from Phase A and were verified working end-to-end (see bug above) without
+       needing any new SQL.
+   - **Contest ratings (Codeforces/CodeChef/LeetCode) for DSA — built**, after asking the user which
+     approach they wanted for the two genuinely open questions (via `AskUserQuestion`, not assumed):
+     required-rating-per-company derived from each company's existing real `dsaLevel` (not invented
+     from nothing), and the user's own rating self-reported/manually entered on Profile (not
+     live-fetched from a platform API — simpler, no CORS/API-stability risk).
+     - `src/lib/contestRatings.js` (new): `CONTEST_PLATFORMS` maps each platform's own
+       publicly-documented rating tiers (Codeforces's Newbie/Pupil/Specialist/Expert/Candidate
+       Master+ titles, CodeChef's/LeetCode's star-ish bands) onto the E-S rank ladder, so a
+       company's existing `dsaLevel: "A"` now also reads as "~1900+ Codeforces" — explicitly labeled
+       an *estimate derived from the rank data*, not a real per-company survey number, everywhere
+       it's shown (Profile's form copy, and implicitly via the "Est." prefix on CompanyDetail).
+     - `profiles` gained `contest_platform`/`contest_rating` columns (nullable, self-reported) —
+       **another schema.sql re-run needed**, added via `alter table ... add column if not exists` so
+       re-running the file is still safe even though the table already exists live.
+     - Profile page: platform dropdown + rating number input, saved via a new
+       `updateContestRating` mutation on `useProfile`. CompanyDetail's "DSA Level Required" now shows
+       the derived rating threshold next to the existing rank pill, plus a "+N clear"/"N to go"
+       comparison once the user has set their own rating — or a link to go set it if they haven't.
+     - Verified via Playwright that this degrades gracefully (no crash, a clear inline error
+       instead) when the new columns don't exist yet — i.e. before the user re-runs schema.sql —
+       consistent with how `user_skill_levels`/`user_level_history` degrade above.
+   - **"How should this app measure success/progress" — a question, not a feature, answered in
+     conversation, not built.** Worth a future session re-reading that answer if it turns into a
+     concrete feature request.
+
+7. **Dark/light mode toggle (2026-08-20, same day, after the persistence work above).** User hit
+   the expected "columns don't exist yet" error trying to save a contest rating (confirms they
+   haven't re-run `schema.sql` yet — not a new bug), and separately asked for a theme toggle.
+   - Found while investigating: this app's ~25 component/page files use Tailwind's **built-in**
+     gray scale directly (`text-white`, `text-slate-100` through `-600`, `border-slate-600`) in
+     hundreds of places, NOT the `--sl-*`/`--color-system-*` theme tokens the top of `index.css`
+     documents as "every color in the app." Rewriting all of that to semantic tokens was judged too
+     large/risky just to add theming (would touch essentially every file). **Decision**: keep dark
+     mode's existing values as the unconditional `:root` default (zero risk of regressing the
+     current look), add a full second palette under `:root[data-theme="light"]`, and additionally
+     override the specific hardcoded Tailwind classes actually used in this codebase
+     (`.text-white`, `.text-slate-100`..`.text-slate-600`, `.border-slate-600`,
+     `.placeholder\:text-slate-600::placeholder`) under `[data-theme="light"]` with higher-specificity
+     selectors. **If a new hardcoded `text-slate-N`/`text-white`/etc. class shows up anywhere in the
+     app later, it needs its own override added in this same block in `index.css` or it will stay
+     dark-colored (illegible) in light mode** — there's a comment marking exactly where.
+   - Light palette isn't a mechanical inversion — the rank-ladder hues especially needed deepening
+     (e.g. the dark-mode C-Rank teal `#3fc7dc` is far too light to read on white, deepened to
+     `#0e8098`) since what worked as light-text-on-navy needs real contrast against white instead.
+     Verified visually via Playwright screenshots of Home/SkillDetail/CompanyDetail/SkillMaxing/
+     Profile in light mode before considering this done, not just "does it compile."
+   - `.system-glow-text`/`.rank-glow-*`/`.system-panel`'s box-shadow "glow" effects are dialed back
+     to ordinary soft shadows under light mode — a colored glow around dark ink on white reads as a
+     blur/halo, not a glow; it's a dark-mode-specific effect.
+   - `index.html` has a **blocking inline script** (before `<script type="module">`) that reads
+     `localStorage["ts-theme"]` (falling back to `prefers-color-scheme`) and sets `data-theme` on
+     `<html>` before first paint — without this there'd be a flash of the wrong theme on every load.
+     `src/hooks/useTheme.js` mirrors the same logic for the toggle button and must be kept in sync
+     with that inline script if either changes.
+   - Theme choice lives in **localStorage, unnamespaced by user** — deliberately, since it's a
+     device/browser display preference, not account data (consistent with how most apps treat
+     light/dark mode; doesn't need the Supabase persistence treatment the data in item 6 above got).
+   - **Real bug caught by screenshot-testing, not by inspection**: the first version rendered
+     `<ThemeToggle />` as a single `fixed top-3 right-3` element at the top of `AppRoutes`, meant to
+     cover every route including the ones outside `<Layout>`. On authenticated pages this silently
+     overlapped `Layout.jsx`'s existing "Log Out" link in the same corner (visible in a screenshot as
+     "LOG O" with the toggle button covering the rest). Fixed by giving `ThemeToggle` two render
+     modes — `variant="inline"` (a plain button, used inside `Layout.jsx`'s header row next to Log
+     Out) and the default `variant="fixed"` (used standalone on `Login`/`Signup`/`Try`, the three
+     routes with no shared header to attach to). **Don't go back to one global fixed instance
+     covering every route** — the pages with a real header need the inline variant specifically to
+     avoid this exact overlap.
+
 ## Current architecture snapshot (as of this writing)
 
 - **Frontend:** React 19 + Vite 8 + Tailwind v4 + React Router v7, `@tanstack/react-query` for
@@ -190,18 +349,21 @@ resume-to-company compatibility checker.
 
 ## What is NOT built yet (don't assume it exists)
 
+- **ACTION REQUIRED before skill-slider/Level-graph persistence works**: `user_skill_levels` and
+  `user_level_history` exist in `supabase/schema.sql` but not yet in the live Supabase project — the
+  user needs to re-run the full schema.sql in their Supabase SQL Editor. Until then, those two data
+  types silently fall back to local defaults every load (no crash, just no persistence) — see the
+  dated entry above. `user_skill_todos`/`user_company_prep`/`missions` already existed and work now.
 - **Subskill depth is thin on most of the 101 skills** — 324 subskills total, average 3.2/skill,
   against an explicit ~10/skill ask. See the dated entry above for which skills need it most.
-  This is the single most important open item as of this writing.
 - **Subskill `weight` isn't wired to anything yet.** Each subskill carries a `weight` field
   (mirroring the original Phase C design) but `skillLevels`/company readiness still reads the
   manually-set slider, not a subskill/todo-derived proficiency. A real "derive skill % from
   weighted subskill completion" formula (parallel to how `hunterLevel` now derives Level from raw
   todo-completion count) is still a future step, not done.
-- **Missions, skill-levels, subskill-todos, and company-prep-checklists are all still
-  `localStorage`-based**, just properly namespaced per user now (not migrated to Supabase tables
-  — `user_skill_todos`/`user_company_prep` exist in `schema.sql` from Phase A but have zero
-  application code reading/writing them yet).
+- **Contest ratings are built but need the same schema.sql re-run** — `profiles.contest_platform`/
+  `contest_rating` won't exist in the live DB until then; the Profile page shows a clear inline error
+  (not a crash) if you try to save before that.
 - **Per-skill historical trails aren't tracked** — only the aggregate `levelHistory` snapshot
   (used by Home's chart) is. SkillDetail's chart shows a single "today" point against the
   reference line, not a real trail, by deliberate scope trade-off.
@@ -230,7 +392,7 @@ resume-to-company compatibility checker.
 |---|---|
 | `README.md` | Current architecture — how the code is organized, how to run it. Read this for *what exists*, not *why*. |
 | `COMPANIES.md` | Auto-generated full company database dump. Regenerate via `node scripts/generate-companies-md.mjs`, never hand-edit. |
-| `SKILLS.md` | Hand-audited resume/project skill inventory with proof-of-skill todos (written before the multi-user migration; still accurate as a skills reference, unrelated to the not-yet-built subskill/todo *feature*). |
+| `SKILLS.md` | Hand-audited resume/project skill inventory with proof-of-skill todos, written before the multi-user migration. The app's own in-app subskill/todo catalog (101 skills, `src/data/skills/`) now covers similar ground at broader-but-shallower depth (avg 3.2 subskills/skill vs. this file's deep per-project audit of ~10 skills) — this file remains the more thorough source for the specific 10 resume projects; not a duplicate to be deleted. |
 | `Case.md` | Concrete user-journey walkthroughs — what different kinds of users (public visitor, fresh signup, returning hunter, owner) actually see and do. |
 | `System.md` | The leveling/ranking/scoring math — hunter rank, skill proficiency bands, company readiness formulas, resume alignment formulas. |
 | `Use.md` | Feature-by-feature catalog — what each part of the app does and how to use it. |
@@ -245,7 +407,8 @@ src/lib/ranks.js             E–S rank math (thresholds, bands, gap calculation
 src/lib/owner.js             isOwner(profile) — DB-driven, no hardcoded identity
 src/lib/extractResumeSkills.js   pdf.js text extraction (lazy-loaded) + keyword scoring glue
 src/data/companies.js        36 companies — static, sourced from real placement data, don't invent entries
-src/data/skills.js           23 skills — roadmap/resources content, `level` field unused as of Phase A+ (kept for default seeding only)
+src/data/skills.js           thin re-export of src/data/skills/index.js — 101 skills, subskills, proof-of-skill todos
+src/data/skills/             17 category files + index.js — the actual skill catalog content lives here now
 src/data/skillKeywords.js    keyword lists the resume checkers match against
 src/App.jsx                  all global state lives in AppRoutes; routes wired here
 src/context/AuthProvider.jsx + useAuth.js + AuthContext.js   split across 3 files specifically to satisfy a react-refresh lint rule

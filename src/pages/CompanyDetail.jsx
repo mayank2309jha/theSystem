@@ -6,6 +6,7 @@ import { getCompany, companySkillReadiness, formatINR, resumeAlignmentScore } fr
 import { resumeInfo, RESUME_SLUG } from "../data/resumes";
 import { useProfile } from "../hooks/useProfile";
 import { isOwner } from "../lib/owner";
+import { CONTEST_PLATFORMS, requiredRatingForRank, ratingGap } from "../lib/contestRatings";
 
 export default function CompanyDetail() {
   const { id } = useParams();
@@ -85,7 +86,24 @@ export default function CompanyDetail() {
           </div>
 
           <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mt-5 mb-2">DSA Level Required</p>
-          <RankPill rank={company.dsaLevel} label="DSA" />
+          <div className="flex items-center gap-3 flex-wrap">
+            <RankPill rank={company.dsaLevel} label="DSA" />
+            {profile?.contest_platform && (
+              <RatingComparison
+                platform={profile.contest_platform}
+                userRating={profile.contest_rating}
+                requiredRank={company.dsaLevel}
+              />
+            )}
+          </div>
+          {!profile?.contest_platform && (
+            <p className="text-[11px] text-slate-500 mt-1.5">
+              <Link to="/profile" className="text-system-blue hover:underline">
+                Set your contest rating on Profile
+              </Link>{" "}
+              to compare it against this rank as an estimated Codeforces/CodeChef/LeetCode number.
+            </p>
+          )}
 
           <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mt-5 mb-2">Core Subjects</p>
           <div className="flex flex-wrap gap-1.5">
@@ -171,6 +189,28 @@ export default function CompanyDetail() {
         </div>
       </div>
     </div>
+  );
+}
+
+function RatingComparison({ platform, userRating, requiredRank }) {
+  const required = requiredRatingForRank(platform, requiredRank);
+  const gap = ratingGap(userRating, platform, requiredRank);
+  const label = CONTEST_PLATFORMS[platform]?.label ?? platform;
+  const cleared = gap !== null && gap >= 0;
+
+  return (
+    <span className="text-[11px] text-slate-500">
+      Est. {label} bar: <span className="text-slate-300 font-display">~{required}</span>
+      {userRating != null && (
+        <>
+          {" "}
+          · yours: <span className="text-slate-300 font-display">{userRating}</span>{" "}
+          <span className={cleared ? "text-rank-d" : "text-slate-500"}>
+            ({cleared ? `+${gap} clear` : `${gap} to go`})
+          </span>
+        </>
+      )}
+    </span>
   );
 }
 

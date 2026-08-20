@@ -8,23 +8,45 @@
 /* ==========================================================================
    THE SYSTEM — COLOR PALETTE
    ==========================================================================
-   Every color used anywhere in the app is controlled from THIS block.
-   To try a different palette, edit the hex/rgb values below and nothing
-   else — every Tailwind utility (bg-system-void, text-rank-a, border-danger,
-   etc.) and every hand-written CSS rule in this file reads from these vars.
+   Every color used anywhere in the app is controlled from THIS block, in
+   TWO variants: the default (dark) under `:root`, and the light-mode
+   override under `:root[data-theme="light"]` (set on <html> by
+   src/hooks/useTheme.js / the blocking inline script in index.html, and
+   flipped by the toggle in src/components/ThemeToggle.jsx). Every Tailwind
+   utility built on these tokens (bg-system-void, text-rank-a, border-danger,
+   ...) and every hand-written CSS rule below reads from these vars, so it
+   re-themes automatically. To try a different palette, edit the hex/rgb
+   values in EITHER block — dark and light are independent palettes, not
+   derived from each other, so keep them thematically consistent by hand.
 
-   Current theme: "Regal" — inspired by colorpalette.jpg (Regal Navy / Deep
-   Crimson / Opulent Gold / Ethereal Ivory / Velvet Obsidian), adapted so
-   the E→A rank ladder stays in a cool blue→violet family and the two warm
-   colors are reserved as deliberate accents: Gold for S-Rank/money/XP
-   (the "you made it" color), Crimson for Failed/critical states only.
+   Base theme: "Regal" — inspired by colorpalette.jpg (Regal Navy / Deep
+   Crimson / Opulent Gold / Ethereal Ivory / Velvet Obsidian). In dark mode
+   the E→A rank ladder stays in a cool blue→violet family; in light mode the
+   same hues are used but deepened for AA-ish contrast against a light
+   backdrop (a light rank-badge fill that was legible on navy reads as
+   near-invisible on white otherwise). Gold and Crimson stay reserved as
+   deliberate accents in both modes: Gold for S-Rank/money/XP, Crimson for
+   Failed/critical states only.
 
-   Each color below is defined twice: once as a hex value (for solid
-   fills/text/borders) and once as an "R G B" triplet with the same name
-   plus `-rgb` (for glows/gradients that need alpha transparency via
-   `rgb(var(--sl-x-rgb) / 40%)`). Keep both in sync when you change a color.
+   Each color is defined twice: once as a hex value (solid fills/text/
+   borders) and once as an "R G B" triplet with the same name plus `-rgb`
+   (for glows/gradients needing alpha via `rgb(var(--sl-x-rgb) / 40%)`).
+   Keep both in sync when you change a color.
+
+   IMPORTANT — components in this app also use Tailwind's built-in gray
+   scale directly (text-white, text-slate-100..600, border-slate-600)
+   instead of these tokens in a lot of places (a pre-existing pattern, not
+   introduced by dark/light mode). Rewriting every className to a semantic
+   token across 25 files was judged too large/risky a refactor just to add
+   theming, so light mode instead OVERRIDES those specific Tailwind utility
+   classes under `[data-theme="light"]` further down this file. If you add a
+   NEW hardcoded slate-N/white class anywhere, add its light-mode override
+   alongside the existing ones or it will stay dark-colored (illegible) in
+   light mode.
    ========================================================================== */
 :root {
+  color-scheme: dark;
+
   /* Backgrounds */
   --sl-void: #171721; /* Velvet Obsidian — page backdrop behind panels */
   --sl-panel: #0a1d4b; /* Regal Navy — main panel surface */
@@ -64,6 +86,49 @@
   --sl-rank-s-rgb: 204 158 74;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Backgrounds — pale navy-tinted backdrop, clean white panels (Regal Navy
+     itself moves to text/borders below instead of disappearing from the
+     palette). */
+  --sl-void: #eef1f8;
+  --sl-panel: #ffffff;
+  --sl-panel-2: #f4f6fb;
+  --sl-border: #d3d9ec;
+  --sl-border-rgb: 211 217 236;
+
+  /* Text — Regal Navy itself, now as ink instead of a panel fill */
+  --sl-text: #141a33;
+  --sl-text-dim: #565f85;
+
+  /* Accents, deepened from the dark-mode hues for contrast against white */
+  --sl-accent: #2f6fd6;
+  --sl-accent-rgb: 47 111 214;
+  --sl-accent-dim: #a7c8f5;
+  --sl-accent-2: #7452c9;
+  --sl-accent-2-rgb: 116 82 201;
+
+  --sl-emphasis: #a3762a;
+  --sl-emphasis-rgb: 163 118 42;
+  --sl-danger: #b0121e;
+  --sl-danger-rgb: 176 18 30;
+
+  /* Same rank-ladder hue family as dark mode, deepened for AA-ish contrast on white */
+  --sl-rank-e: #545d80;
+  --sl-rank-e-rgb: 84 93 128;
+  --sl-rank-d: #3373d1;
+  --sl-rank-d-rgb: 51 115 209;
+  --sl-rank-c: #0e8098;
+  --sl-rank-c-rgb: 14 128 152;
+  --sl-rank-b: #5b4bc4;
+  --sl-rank-b-rgb: 91 75 196;
+  --sl-rank-a: #7c4fd9;
+  --sl-rank-a-rgb: 124 79 217;
+  --sl-rank-s: #a3762a;
+  --sl-rank-s-rgb: 163 118 42;
+}
+
 /* Tailwind theme tokens — map utility classes (bg-system-void, text-rank-a,
    border-danger, ...) onto the palette vars above. Component code never
    hardcodes a color; it only ever uses these class names. */
@@ -90,7 +155,6 @@
 }
 
 html {
-  color-scheme: dark;
   /* Every Tailwind text-* and spacing-* utility is rem-based off this root
      size, so bumping it scales all text (and the whitespace around it)
      uniformly across the whole app — a single-line fix instead of editing
@@ -151,3 +215,40 @@ body {
   background: var(--color-system-blue-dim);
   border-radius: 4px;
 }
+
+/* ==========================================================================
+   LIGHT MODE — overrides for Tailwind's built-in gray scale
+   ==========================================================================
+   Glows read as a soft halo around dark ink on a light backdrop, not as a
+   glow — dialed back to ordinary shadows here. And a lot of this app's
+   text/border classes are Tailwind's stock slate-N grays rather than the
+   theme tokens above (see the big comment at the top of this file); this is
+   the single place all of those get remapped for light mode. Add new
+   overrides here if a new hardcoded slate-N/white class shows up anywhere.
+   ========================================================================== */
+[data-theme="light"] .system-glow-text {
+  text-shadow: none;
+}
+
+[data-theme="light"] .system-panel {
+  box-shadow:
+    0 1px 2px rgb(20 26 51 / 6%),
+    0 6px 20px rgb(20 26 51 / 8%);
+}
+
+[data-theme="light"] .rank-glow-E { box-shadow: 0 1px 4px rgb(20 26 51 / 14%); }
+[data-theme="light"] .rank-glow-D { box-shadow: 0 1px 4px rgb(20 26 51 / 14%); }
+[data-theme="light"] .rank-glow-C { box-shadow: 0 1px 4px rgb(20 26 51 / 14%); }
+[data-theme="light"] .rank-glow-B { box-shadow: 0 1px 4px rgb(20 26 51 / 14%); }
+[data-theme="light"] .rank-glow-A { box-shadow: 0 1px 4px rgb(20 26 51 / 14%); }
+[data-theme="light"] .rank-glow-S { box-shadow: 0 1px 6px rgb(163 118 42 / 30%); }
+
+[data-theme="light"] .text-white { color: var(--sl-text); }
+[data-theme="light"] .text-slate-100 { color: #1c2340; }
+[data-theme="light"] .text-slate-200 { color: #2a3252; }
+[data-theme="light"] .text-slate-300 { color: #3c4468; }
+[data-theme="light"] .text-slate-400 { color: #565f85; }
+[data-theme="light"] .text-slate-500 { color: #6b7398; }
+[data-theme="light"] .text-slate-600 { color: #8890b0; }
+[data-theme="light"] .border-slate-600 { border-color: #c7cfe3; }
+[data-theme="light"] .placeholder\:text-slate-600::placeholder { color: #a3abc7; }

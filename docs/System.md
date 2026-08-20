@@ -8,19 +8,56 @@ formulas, not just names them.
 ## The rank ladder
 
 Six ranks, weakest to strongest: **E → D → C → B → A → S**. This single vocabulary is reused for
-three different things in the app, and it's worth being precise about which is which:
+several different things in the app, and it's worth being precise about which is which:
 
-1. **Hunter Rank** — your overall standing, shown on Home.
-2. **Skill Rank** — a per-skill proficiency label (e.g. "C-Rank DSA").
+1. **Hunter Rank** — your overall standing, shown on Home. As of the Level-system redesign
+   (2026-08-20), this is **Level-driven, not XP-driven** — see below.
+2. **Skill Rank** — a per-skill proficiency label (e.g. "C-Rank DSA"), from the manually-set slider.
 3. **Requirement Rank** — how hard a company's bar is for a given skill (e.g. "Apple needs A-Rank
    System Design").
 
 (1) and (2) are about *you*; (3) is a fact about a company, independent of anyone's progress.
 
-## Hunter Rank (XP-driven)
+## Level — the power-scaling system (1–100)
 
-Cumulative XP from **cleared missions** on your Mission Board, checked against fixed thresholds
-(`RANK_THRESHOLDS` in `src/lib/ranks.js`):
+Your overall progress toward S-Rank, divided into 100 discrete levels. Level 1 is the floor — a
+brand-new account with zero checked proof-of-skill todos reads as "Level 1," never "Level 0."
+Level 100 means every proof-of-skill todo across the entire 101-skill catalog is checked off.
+
+```js
+// src/lib/prep.js
+TOTAL_TODO_COUNT = Σ todos.length across every subskill across every skill in skillCatalog  (648 currently)
+
+hunterLevel(subskillTodos) {
+  checkedCount = number of keys in subskillTodos   // { "skillId:subskillId:todoIndex": true, ... }
+  pct = (checkedCount / TOTAL_TODO_COUNT) × 100
+  return clamp(round(pct), 1, 100)
+}
+```
+
+Level is deliberately driven by **todo completion**, not by the manually-set skill sliders — those
+default to a non-zero E-Rank seed (10 out of 100), which would make a fresh account misleadingly
+read as "Level 10." Checking off a proof-of-skill todo is "doing more skills," which is literally
+what should move this number.
+
+**The Hunter Rank badge on Status Window is this same number, relabeled.** `skillRankForLevel(level)`
+maps Level onto the E→S vocabulary via the same 6-equal-band split skill proficiency uses (see
+below) — so "Level 34" and "C-Rank" are two views of one underlying value, not two systems to
+reconcile. `getLevelProgress(level)` (in `ranks.js`) drives the rank-track progress bar the same way
+`getRankProgress(xp)` used to.
+
+**What changed from the original design:** Hunter Rank used to be purely XP-driven — cumulative XP
+from cleared Mission Board entries against fixed thresholds (`getRankForXP`/`getRankProgress`,
+`RANK_THRESHOLDS` in `ranks.js`). That XP-threshold system **still exists in code** (`RankTrack`
+still accepts an `xp` prop and can render it), but nothing in the UI calls it that way anymore —
+`StatusWindow.jsx` always passes `level`, never `xp`, to `RankTrack`. Mission Board XP still
+accumulates from a mission's `difficulty` field when marked "Cleared" (`DIFFICULTY_XP` in
+`src/data/seed.js`, awarded once per mission via an `xpAwarded` flag) and still displays as its own
+"Total XP" stat on Home — it's just no longer what determines your rank badge. If you're trying to
+understand "why does clearing missions not move my rank anymore," this is why: that's the Level
+system's job now, driven by subskill-todo completion, not job-application progress.
+
+For reference, the now-inert XP thresholds:
 
 | Rank | XP required |
 |---|---|
@@ -31,8 +68,7 @@ Cumulative XP from **cleared missions** on your Mission Board, checked against f
 | A | 3,500 |
 | S | 6,000 |
 
-XP itself comes from a mission's `difficulty` field when you mark it "Cleared" (`DIFFICULTY_XP` in
-`src/data/seed.js`):
+And mission difficulty → XP:
 
 | Difficulty | XP awarded |
 |---|---|
@@ -43,16 +79,38 @@ XP itself comes from a mission's `difficulty` field when you mark it "Cleared" (
 | A | 650 |
 | S | 1,000 |
 
-XP is only ever awarded once per mission (an `xpAwarded` flag prevents double-counting if you flip
-a mission's status back and forth). **This is entirely separate from skill proficiency or company
-readiness** — clearing a mission is about your personal job-application pipeline, not a claim about
-what you actually know.
+## Subskills & proof-of-skill todos
 
-## Skill proficiency (currently: a direct 0–100 number)
+Every skill in the 101-skill catalog (`src/data/skills/`, 17 category files aggregated via
+`index.js`) breaks down as **Skill → Subskills → Todos**:
 
-Every skill has a proficiency value from 0 to 100, stored per-user (see `docs/CONTEXT.md` for the
-current localStorage-based storage detail — the *value* itself is what matters here, not where
-it's kept). That number maps onto the same E→S vocabulary by splitting 0–100 into 6 equal bands:
+```js
+{
+  id, name, category, level: 10,   // level = default seed for the proficiency slider, see below
+  why,
+  subskills: [
+    { id, name, weight, todos: ["...", "...", ...] }
+  ]
+}
+```
+
+Checking a todo (`toggleSubskillTodo` in `App.jsx`, todo id format `` `${skillId}:${subskillId}:${todoIndex}` ``)
+is what feeds `hunterLevel` above. **Current catalog size: 101 skills, 324 subskills (avg 3.2/skill),
+648 todos** — short of the ~10-subskills-per-skill target the catalog was built toward; `dsa` (11)
+and `hld` (10) already meet the bar, most others (GraphQL, MySQL, MongoDB, TDD, and more) currently
+sit at 1–2. See `docs/CONTEXT.md` for the full list and honest accounting of this gap.
+
+Each subskill's `weight` field exists for a future formula ("derive skill proficiency % from
+weighted subskill completion," mirroring how `hunterLevel` derives Level from raw todo count) but
+**is not wired to anything yet** — it's inert data right now.
+
+## Skill proficiency (still: a direct 0–100 number, separate from Level)
+
+Every skill *also* has its own proficiency value from 0 to 100 — the manually-set slider on
+`SkillDetail`, unrelated to that skill's subskill/todo checklist or to Level. Stored per-user (see
+`docs/CONTEXT.md` for the current account-backed (Supabase, `user_skill_levels`) storage detail — the *value* itself is what
+matters here, not where it's kept). That number maps onto the same E→S vocabulary by splitting
+0–100 into 6 equal bands:
 
 ```
 band width = 100 / 6 ≈ 16.67
@@ -107,10 +165,10 @@ importance-weighted average of every required skill's progress, as a percentage:
 readiness = Σ(progress × importance) / Σ(importance) × 100
 ```
 
-This exact function is the shared core behind **both** resume-checking flows (public `/try` and
-authenticated `/resume`) — see `docs/ResumetoCompany.md` for how the skill-level map that feeds
-into it gets built from an uploaded PDF. `companiesRankedByReadiness(skillLevels)` runs this for
-all 36 companies and sorts descending.
+This exact function is the shared core behind **all three** resume-scanning flows (public `/try`,
+authenticated `/resume`, and Resume Raid's per-resume scan) — see `docs/ResumetoCompany.md` for how
+the skill-level map that feeds into it gets built from an uploaded PDF. `companiesRankedByReadiness(skillLevels)`
+runs this for all 36 companies and sorts descending.
 
 ## Goal-driven skill framing ("unlock curve")
 
@@ -131,7 +189,7 @@ actually unlock more companies, and returns how many. This is what drives the "R
 unlocks 12 more companies" language throughout the app — always a concrete, achievable next step,
 never an assumed ceiling.
 
-**`skillPriorities(levels)`** ranks all 23 skills by "how many companies does the next milestone
+**`skillPriorities(levels)`** ranks all 101 skills by "how many companies does the next milestone
 unlock" — the highest-leverage single next move, goal-agnostic by construction. This powers Home's
 "Where to Focus Next" panel (top 6). Skills already maxed out for every company that lists them are
 excluded from this list (there's nothing left to unlock).
@@ -147,7 +205,9 @@ of a live proficiency number. Owner-only feature; full detail in `docs/ResumetoC
 
 | Concept | Function | File |
 |---|---|---|
-| Hunter Rank from XP | `getRankForXP`, `getRankProgress` | `lib/ranks.js` |
+| Level (1-100, drives Hunter Rank badge) | `hunterLevel` | `lib/prep.js` |
+| Level → rank progress bar | `getLevelProgress` | `lib/ranks.js` |
+| Hunter Rank from XP (legacy, unreachable from current UI) | `getRankForXP`, `getRankProgress` | `lib/ranks.js` |
 | Skill level → rank band | `skillRankForLevel` | `lib/ranks.js` |
 | Rank → required proficiency | `requiredProficiencyForRank` | `lib/prep.js` |
 | Company readiness (one company) | `companyReadinessFromSkillLevels` | `lib/prep.js` |

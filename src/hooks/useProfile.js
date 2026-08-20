@@ -34,5 +34,31 @@ export function useProfile() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["profile", user?.id] }),
   });
 
-  return { ...query, updateName: updateName.mutateAsync, updateNameStatus: updateName.status };
+  const updateContestRating = useMutation({
+    mutationFn: async ({ platform, rating }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ contest_platform: platform, contest_rating: rating, updated_at: new Date().toISOString() })
+        .eq("id", user.id);
+      if (error) throw error;
+    },
+    onMutate: async ({ platform, rating }) => {
+      await queryClient.cancelQueries({ queryKey: ["profile", user?.id] });
+      const previous = queryClient.getQueryData(["profile", user?.id]);
+      queryClient.setQueryData(["profile", user?.id], (old) => ({ ...old, contest_platform: platform, contest_rating: rating }));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["profile", user?.id], context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["profile", user?.id] }),
+  });
+
+  return {
+    ...query,
+    updateName: updateName.mutateAsync,
+    updateNameStatus: updateName.status,
+    updateContestRating: updateContestRating.mutateAsync,
+    updateContestRatingStatus: updateContestRating.status,
+  };
 }

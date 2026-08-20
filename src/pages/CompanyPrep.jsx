@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import { companiesSortedByDay } from "../lib/prep";
 
@@ -15,6 +16,7 @@ function matchesDomain(company, filter) {
 }
 
 export default function CompanyPrep() {
+  const { skillLevels } = useOutletContext();
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
 
@@ -56,7 +58,7 @@ export default function CompanyPrep() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {companiesList.map((c) => (
-          <CompanyCard key={c.id} company={c} />
+          <CompanyCard key={c.id} company={c} skillLevels={skillLevels} />
         ))}
         {companiesList.length === 0 && <p className="text-sm text-slate-500 italic col-span-full">No companies match that search.</p>}
       </div>

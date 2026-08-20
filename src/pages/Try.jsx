@@ -2,6 +2,7 @@ import { useState } from "react";
 import ResumeDropzone from "../components/ResumeDropzone";
 import CompanyReadinessTable from "../components/CompanyReadinessTable";
 import CTABanner from "../components/CTABanner";
+import ThemeToggle from "../components/ThemeToggle";
 import { detectSkillLevelsFromPdfFile } from "../lib/extractResumeSkills";
 import { companiesRankedByReadiness } from "../lib/prep";
 
@@ -24,6 +25,7 @@ export default function Try() {
 
   return (
     <div className="min-h-screen px-4 py-8 sm:px-8 max-w-4xl mx-auto">
+      <ThemeToggle />
       <header className="text-center mb-6">
         <p className="text-xs tracking-[0.4em] text-system-blue/60 uppercase mb-2">The System</p>
         <h1 className="font-display text-2xl sm:text-3xl font-black text-white system-glow-text tracking-wide">

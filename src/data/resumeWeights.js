@@ -4,36 +4,45 @@ import { RESUME } from "./resumes.js";
 // actually reading each resume's TECHNICAL SKILLS section: a skill entirely
 // absent from a resume (e.g. Machine Learning is dropped completely from
 // SDE+Algo and Backend) scores 0 for that resume, not just "low."
+//
+// Keys are skill ids from the 101-skill catalog (src/data/skills/). Originally
+// authored against a smaller 23-skill catalog whose flat ids (system-design,
+// distributed-systems, os, data-analysis, backend-apis, dbms-sql, networks,
+// cloud-infra, react-frontend) no longer exist after the catalog expansion —
+// remapped 1:1 to their closest current equivalent (hld, microservices,
+// os-fundamentals, eda, rest-api-design, sql, computer-networks, docker,
+// react) rather than re-authored, since the underlying resume content these
+// weights encode hasn't changed. See docs/CONTEXT.md for the mapping.
 export const resumeSkillWeights = {
   [RESUME.SDE]: {
-    dsa: 0.7, "system-design": 0.6, oop: 0.6, os: 0.5, "systems-programming": 0.5, coa: 0.1,
-    multithreading: 0.8, networks: 0.5, "cloud-infra": 0.5, "dbms-sql": 0.8,
-    "ml-fundamentals": 0.4, "deep-learning": 0.2, nlp: 0.2, "data-analysis": 0.2,
-    java: 0.8, cpp: 0.7, python: 0.8, "react-frontend": 0.7, "backend-apis": 0.9, "distributed-systems": 0.8,
+    dsa: 0.7, hld: 0.6, oop: 0.6, "os-fundamentals": 0.5, "systems-programming": 0.5, coa: 0.1,
+    multithreading: 0.8, "computer-networks": 0.5, docker: 0.5, sql: 0.8,
+    "ml-fundamentals": 0.4, "deep-learning": 0.2, nlp: 0.2, eda: 0.2,
+    java: 0.8, cpp: 0.7, python: 0.8, react: 0.7, "rest-api-design": 0.9, microservices: 0.8,
   },
   [RESUME.ALGO]: {
-    dsa: 1.0, "system-design": 0.6, oop: 0.7, os: 0.5, "systems-programming": 0.6, coa: 0.15,
-    multithreading: 0.7, networks: 0.5, "cloud-infra": 0.4, "dbms-sql": 0.7,
-    "ml-fundamentals": 0, "deep-learning": 0, nlp: 0, "data-analysis": 0,
-    java: 0.8, cpp: 0.8, python: 0.7, "react-frontend": 0.6, "backend-apis": 0.8, "distributed-systems": 0.8,
+    dsa: 1.0, hld: 0.6, oop: 0.7, "os-fundamentals": 0.5, "systems-programming": 0.6, coa: 0.15,
+    multithreading: 0.7, "computer-networks": 0.5, docker: 0.4, sql: 0.7,
+    "ml-fundamentals": 0, "deep-learning": 0, nlp: 0, eda: 0,
+    java: 0.8, cpp: 0.8, python: 0.7, react: 0.6, "rest-api-design": 0.8, microservices: 0.8,
   },
   [RESUME.BACKEND]: {
-    dsa: 0.6, "system-design": 0.6, oop: 0.5, os: 0.4, "systems-programming": 0.4, coa: 0.05,
-    multithreading: 0.8, networks: 0.5, "cloud-infra": 0.7, "dbms-sql": 0.9,
-    "ml-fundamentals": 0, "deep-learning": 0, nlp: 0, "data-analysis": 0,
-    java: 0.7, cpp: 0.6, python: 0.7, "react-frontend": 0.5, "backend-apis": 1.0, "distributed-systems": 1.0,
+    dsa: 0.6, hld: 0.6, oop: 0.5, "os-fundamentals": 0.4, "systems-programming": 0.4, coa: 0.05,
+    multithreading: 0.8, "computer-networks": 0.5, docker: 0.7, sql: 0.9,
+    "ml-fundamentals": 0, "deep-learning": 0, nlp: 0, eda: 0,
+    java: 0.7, cpp: 0.6, python: 0.7, react: 0.5, "rest-api-design": 1.0, microservices: 1.0,
   },
   [RESUME.ML]: {
-    dsa: 0.5, "system-design": 0.4, oop: 0.3, os: 0.2, "systems-programming": 0.1, coa: 0,
-    multithreading: 0.3, networks: 0.2, "cloud-infra": 0.3, "dbms-sql": 0.6,
-    "ml-fundamentals": 1.0, "deep-learning": 1.0, nlp: 1.0, "data-analysis": 0.9,
-    java: 0.5, cpp: 0.5, python: 0.9, "react-frontend": 0.2, "backend-apis": 0.6, "distributed-systems": 0.3,
+    dsa: 0.5, hld: 0.4, oop: 0.3, "os-fundamentals": 0.2, "systems-programming": 0.1, coa: 0,
+    multithreading: 0.3, "computer-networks": 0.2, docker: 0.3, sql: 0.6,
+    "ml-fundamentals": 1.0, "deep-learning": 1.0, nlp: 1.0, eda: 0.9,
+    java: 0.5, cpp: 0.5, python: 0.9, react: 0.2, "rest-api-design": 0.6, microservices: 0.3,
   },
   [RESUME.NONCORE]: {
-    dsa: 0.4, "system-design": 0.3, oop: 0.2, os: 0.15, "systems-programming": 0.05, coa: 0,
-    multithreading: 0.2, networks: 0.15, "cloud-infra": 0.25, "dbms-sql": 0.55,
-    "ml-fundamentals": 0.5, "deep-learning": 0.3, nlp: 0.35, "data-analysis": 1.0,
-    java: 0.4, cpp: 0.4, python: 0.8, "react-frontend": 0.15, "backend-apis": 0.5, "distributed-systems": 0.2,
+    dsa: 0.4, hld: 0.3, oop: 0.2, "os-fundamentals": 0.15, "systems-programming": 0.05, coa: 0,
+    multithreading: 0.2, "computer-networks": 0.15, docker: 0.25, sql: 0.55,
+    "ml-fundamentals": 0.5, "deep-learning": 0.3, nlp: 0.35, eda: 1.0,
+    java: 0.4, cpp: 0.4, python: 0.8, react: 0.15, "rest-api-design": 0.5, microservices: 0.2,
   },
 };
 

@@ -28,9 +28,21 @@ create table if not exists public.profiles (
   -- normal client-side update (e.g. editing your display name) can never
   -- change this column — only a direct SQL Editor command can.
   is_owner   boolean not null default false,
+  -- Self-reported competitive-programming rating (DSA readiness track) — one
+  -- platform at a time, entered manually on the Profile page. NULL until the
+  -- user sets it. See src/lib/contestRatings.js for how this compares against
+  -- a company's dsaLevel requirement.
+  contest_platform text check (contest_platform in ('codeforces', 'codechef', 'leetcode')),
+  contest_rating    int check (contest_rating >= 0 and contest_rating <= 4000),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Safe to re-run on a profiles table created before these columns existed.
+alter table public.profiles add column if not exists contest_platform text
+  check (contest_platform in ('codeforces', 'codechef', 'leetcode'));
+alter table public.profiles add column if not exists contest_rating int
+  check (contest_rating >= 0 and contest_rating <= 4000);
 
 alter table public.profiles enable row level security;
 
@@ -85,6 +97,25 @@ alter table public.user_skill_todos enable row level security;
 
 drop policy if exists "user_skill_todos_all_own" on public.user_skill_todos;
 create policy "user_skill_todos_all_own" on public.user_skill_todos
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ============================================================================
+-- 2b. user_skill_levels — the manual 0-100 proficiency slider per skill
+--    (skill_id is a static id from src/data/skills/, e.g. "react", "hld")
+-- ============================================================================
+
+create table if not exists public.user_skill_levels (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  skill_id   text not null,
+  level      int not null check (level >= 0 and level <= 100),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, skill_id)
+);
+
+alter table public.user_skill_levels enable row level security;
+
+drop policy if exists "user_skill_levels_all_own" on public.user_skill_levels;
+create policy "user_skill_levels_all_own" on public.user_skill_levels
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ============================================================================
@@ -182,6 +213,25 @@ create policy "user_raid_resumes_all_own" on public.user_raid_resumes
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ============================================================================
+-- 5c. user_level_history — one Level (1-100) snapshot per calendar day,
+--     powers the Progress Over Time graph on Home/Skill Detail
+-- ============================================================================
+
+create table if not exists public.user_level_history (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  date       date not null,
+  level      int not null check (level >= 1 and level <= 100),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, date)
+);
+
+alter table public.user_level_history enable row level security;
+
+drop policy if exists "user_level_history_all_own" on public.user_level_history;
+create policy "user_level_history_all_own" on public.user_level_history
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ============================================================================
 -- 6. Storage — private "resumes" bucket, one folder per user
 --    Objects must be uploaded at path: {user_id}/resume.pdf
 --    (Resume Raid additionally uses {user_id}/raid/{id}.pdf in this same bucket.)
@@ -248,7 +298,8 @@ create policy "app_resumes_select_owner_only" on storage.objects
 -- ============================================================================
 -- select tablename, rowsecurity from pg_tables
 --   where schemaname = 'public'
---   and tablename in ('profiles','user_skill_todos','user_company_prep','missions','user_resumes');
+--   and tablename in ('profiles','user_skill_todos','user_skill_levels','user_company_prep',
+--                      'missions','user_resumes','user_raid_resumes','user_level_history');
 
 -- ============================================================================
 -- ONE-TIME MANUAL STEP — run this yourself, separately, after signing up
