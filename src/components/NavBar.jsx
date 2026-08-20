@@ -10,7 +10,10 @@ const baseTabs = [
 
 const ownerOnlyTabs = [{ to: "/resumes", label: "Resume Maxing" }];
 
-const trailingTabs = [{ to: "/profile", label: "Profile" }];
+const trailingTabs = [
+  { to: "/resume", label: "My Resume" },
+  { to: "/profile", label: "Profile" },
+];
 
 export default function NavBar() {
   const { data: profile } = useProfile();

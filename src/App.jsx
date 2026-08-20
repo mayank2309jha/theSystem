@@ -17,6 +17,8 @@ import SkillMaxing from "./pages/SkillMaxing";
 import SkillDetail from "./pages/SkillDetail";
 import ResumeMaxing from "./pages/ResumeMaxing";
 import ResumeDetail from "./pages/ResumeDetail";
+import Resume from "./pages/Resume";
+import Try from "./pages/Try";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { seedMissions, DIFFICULTY_XP } from "./data/seed";
 import { skillCatalog } from "./data/skills";
@@ -104,6 +106,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/try" element={<Try />} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout {...outletContext} />}>
@@ -113,6 +116,7 @@ function AppRoutes() {
             <Route path="/skills" element={<SkillMaxing />} />
             <Route path="/skill/:id" element={<SkillDetail />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/resume" element={<Resume />} />
 
             <Route element={<OwnerRoute />}>
               <Route path="/resumes" element={<ResumeMaxing />} />

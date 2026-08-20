@@ -105,6 +105,40 @@ export function companySkillReadiness(company, levels) {
   });
 }
 
+// The minimum proficiency % needed to BE a given rank — the same 6-way
+// split skillRankForLevel() itself uses, just inverted.
+export function requiredProficiencyForRank(rank) {
+  return (rankIndex(rank) / RANK_ORDER.length) * 100;
+}
+
+// Aggregate 0-100 readiness for ONE company given ANY flat {skillId: 0-100}
+// map, regardless of where those numbers came from — a manually-set skill
+// level, or (as used by the resume checkers) keyword-detected proficiency
+// from an uploaded PDF. Each required skill contributes to the average
+// weighted by how high a rank it demands, and no single skill can
+// contribute more than "fully satisfied" even if the user's level for it
+// exceeds what's required.
+export function companyReadinessFromSkillLevels(company, skillLevels) {
+  let weightedSum = 0;
+  let weightTotal = 0;
+  for (const req of company.skills) {
+    const importance = rankIndex(req.requiredRank) + 1;
+    const level = skillLevels[req.id] ?? 0;
+    const requiredProficiency = requiredProficiencyForRank(req.requiredRank);
+    const progress = requiredProficiency === 0 ? 1 : Math.min(level / requiredProficiency, 1);
+    weightedSum += importance * progress;
+    weightTotal += importance;
+  }
+  return weightTotal > 0 ? Math.round((weightedSum / weightTotal) * 100) : 0;
+}
+
+// Every company ranked by readiness against a flat skill-level map.
+export function companiesRankedByReadiness(skillLevels) {
+  return [...companies]
+    .map((company) => ({ company, readiness: companyReadinessFromSkillLevels(company, skillLevels) }))
+    .sort((a, b) => b.readiness - a.readiness);
+}
+
 export function formatINR(amount) {
   if (amount == null) return "Not listed";
   return `₹${(amount / 100000).toFixed(2)} L`;
