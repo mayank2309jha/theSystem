@@ -38,7 +38,14 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
--- Safe to re-run on a profiles table created before these columns existed.
+-- Safe to re-run on a profiles table created before these columns existed —
+-- `create table if not exists` above is a full no-op on a table that already
+-- exists (which yours does), so it does NOT retroactively add columns to it.
+-- Every column added after the table's original creation needs its own
+-- `add column if not exists` here, or a later statement referencing it
+-- (e.g. the is_owner policy just below) will fail with "column does not
+-- exist" even though the column is right there in the CREATE TABLE above.
+alter table public.profiles add column if not exists is_owner boolean not null default false;
 alter table public.profiles add column if not exists contest_platform text
   check (contest_platform in ('codeforces', 'codechef', 'leetcode'));
 alter table public.profiles add column if not exists contest_rating int

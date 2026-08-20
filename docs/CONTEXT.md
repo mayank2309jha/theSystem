@@ -334,6 +334,25 @@ resume-to-company compatibility checker.
      covering every route** — the pages with a real header need the inline variant specifically to
      avoid this exact overlap.
 
+8. **`schema.sql` re-run failure (2026-08-20, same day): `ERROR 42703: column "is_owner" does not
+   exist`.** Root cause: `create table if not exists public.profiles (...)` is a full no-op when the
+   table already exists (it does, since Phase A) — it does NOT retroactively add columns that are
+   only present in the CREATE TABLE text, even `is_owner`, which had been part of that inline
+   definition since long before this session. The later `create policy "profiles_update_own"`
+   statement references `is_owner` directly, and since nothing had explicitly `alter table add
+   column`'d it onto the real, already-existing table, that reference failed. This was the exact
+   same class of bug as the `contest_platform`/`contest_rating` safety net added earlier the same
+   day — I added that net for the two NEW columns but didn't realize `is_owner` needed the identical
+   treatment, since it read as "already existing" rather than "a column whose presence in a live
+   table isn't actually guaranteed by this file." **Fixed**: `alter table public.profiles add
+   column if not exists is_owner boolean not null default false;` added alongside the other two.
+   **Lesson, stated plainly for next time this file is touched**: in this file specifically, a
+   column only actually gets added to a live database via an explicit `alter table ... add column
+   if not exists` line — never by editing the inline `create table if not exists` column list alone,
+   no matter how "obviously already there" that column seems. Every column in `profiles` past the
+   original `id`/`email`/`name`/`created_at`/`updated_at` needs one of these lines or a future
+   session will hit this same error class again.
+
 ## Current architecture snapshot (as of this writing)
 
 - **Frontend:** React 19 + Vite 8 + Tailwind v4 + React Router v7, `@tanstack/react-query` for
