@@ -112,6 +112,68 @@ resume-to-company compatibility checker.
        feature was thoroughly verified working locally before that deploy attempt. Re-verify on
        the live URL once you have a moment; don't assume it's still broken, but don't assume it's
        fixed either — check.
+   - **GitHub connected + docs written** (`docs/` folder created, README brought current — was
+     badly stale, still claiming "no backend" after the whole Supabase migration).
+   - **The 101-skill catalog + Resume Raid + Level system + progress graphs** (2026-08-20,
+     same day as the above). User explicitly said the existing 23 skills weren't enough options
+     for a hunter to master, and asked for ~100+ specific top-level skills (e.g. "React, HLD, LLD,
+     Node, Postgres"), each with ~10 subskills on average (e.g. "React Hooks, React Router"),
+     each subskill with concrete "prove you know this" todos — sourced first from reading all 5
+     resumes, then company requirements, then web research to fill any remaining gap toward 100+.
+     - Built `src/data/skills/` as 17 category files (`coreCS.js`, `languages.js`, `frontend.js`,
+       `backend.js`, `databases.js`, `distributedSystems.js`, `systemsOS.js`, `cloudDevops.js`,
+       `machineLearning.js`, `nlpLLM.js`, `dataEngineering.js`, `appliedAlgorithms.js`,
+       `testing.js`, `security.js`, `specialized.js`, `interviewCraft.js`, `additionalDomains.js`),
+       aggregated via `skills/index.js`; `src/data/skills.js` is now just a thin re-export so
+       every existing `from "../data/skills"` import kept working unchanged.
+     - **Known shortfall, not yet closed:** landed at **101 skills but only 324 subskills total
+       (avg 3.2/skill, not the ~10 asked for)** — breadth was prioritized over depth in this pass.
+       Many skills (GraphQL, MySQL, MongoDB, TDD, most cloud/data-viz entries) currently have only
+       1-2 subskills. This was flagged directly to the user rather than silently under-delivered.
+       **The highest-value next step is a dedicated pass expanding subskills on the currently-thin
+       skills toward the ~10 average** — `dsa` (11) and `hld` (10) already meet the bar and don't
+       need more; most others do.
+     - Each subskill has `{ id, name, weight, todos: [...] }` — `weight` exists for a future
+       subskill-driven proficiency formula (mirrors the original Phase C design) but is **not yet
+       wired to anything** — manually-set skill sliders are still what `skillLevels` (and thus
+       company readiness) reads.
+     - **SkillDetail.jsx redesigned**: the old `roadmap`/`resources` fields are gone from the data
+       model entirely (replaced by `subskills`), so the page now renders a checkable subskill/todo
+       list instead. Todo-completion state (`subskillTodos`, `{todoId: true}` sparse map keyed
+       `"{skillId}:{subskillId}:{todoIndex}"`) lives in `App.jsx`'s global state, namespaced per
+       user from the start — learned from the earlier `useLocalStorage` key-reactivity bug.
+     - **Power scaling / Level system**: `hunterLevel(subskillTodos)` in `lib/prep.js` — Level
+       1-100, where 1 is the floor and 100 = every todo in the whole catalog checked off.
+       **Important, non-obvious design correction made mid-session**: the first version derived
+       Level from the average of the manually-set skill sliders, which default to 10 (E-Rank
+       seed) — that made a brand-new account show "Level 10," contradicting the user's explicit
+       "they are level 1 right now." Fixed by driving Level from `subskillTodos` completion count
+       instead (a genuinely-earned signal, 0 checked = Level 1) — verified live. If this ever gets
+       touched again, do NOT revert to a skill-level-average basis without re-deriving why that's
+       wrong. `skillRankForLevel(level)` still applies on top for the E-S rank label, unchanged.
+     - **Resume Raid** (`/resume-raid`, all authenticated users): upload *multiple* resumes (new
+       `user_raid_resumes` table, no unique-per-user constraint, unlike `user_resumes`'s single
+       "My Resume" slot) into the same private `resumes` bucket under `{user_id}/raid/{id}.pdf`
+       (no new bucket/storage policy needed — the existing policy already scopes by the caller's
+       own top-level folder). Scans all of them with the same keyword-detection engine as `/try`,
+       unions results via max-per-skill, and surfaces every "claimed" skill (present in at least
+       one resume) with a link into that skill's subskill/todo checklist ("Test My Strength") and
+       a "Start Tracking" button that calls `claimSkills()` to seed a baseline slider level.
+     - **Progress graphs, authenticated-only by construction** (every route showing one is already
+       behind `ProtectedRoute` — no separate gating needed). Hand-rolled inline SVG
+       (`ProgressChart.jsx`), not a charting library — pdf.js already added real weight this
+       session, a 2-line chart didn't justify another dependency. Home shows real day-by-day
+       history (`levelHistory`, one snapshot per calendar day, written via a `useEffect` in
+       `App.jsx`) against an even-pace reference line from 2026-08-18 to 2026-11-30. SkillDetail
+       shows the same reference line but only a single "today" point — **per-skill historical
+       trails are NOT tracked** (only the aggregate `levelHistory` is), a deliberate scope
+       trade-off, not an oversight.
+     - **Bug fix**: `CompanyDetail.jsx`'s prep-checklist was still plain `useLocalStorage("ts-prep-
+       {companyId}")` — not even namespaced per user, unlike missions/skillLevels which had
+       already been fixed. Moved into the same global, namespaced pattern
+       (`companyPrepChecked`/`toggleCompanyPrepItem` in `App.jsx`'s outlet context). This closes
+       the "known issue" flagged in the previous session — don't reintroduce a page-local
+       `useLocalStorage` call for anything that needs to be user-isolated; put it in `App.jsx`.
 
 ## Current architecture snapshot (as of this writing)
 
@@ -128,29 +190,21 @@ resume-to-company compatibility checker.
 
 ## What is NOT built yet (don't assume it exists)
 
-- **The Skill → Subskill → Todo proficiency redesign never happened.** An earlier 48-section spec
-  called for this (skill proficiency derived from checkable todos, weighted subskills, etc.) and a
-  plan was written for it (Phase C), but the user's priorities shifted (privacy fixes, deployment,
-  the resume checker, goal-driven framing, then docs) and Phase C was never executed. **Skill
-  proficiency today is still a flat, directly-set 0-100 number per skill**
-  (`ts-skill-levels-{userId}` in `localStorage`, via the `skillLevels` state in `App.jsx`'s
-  `AppRoutes`), not derived from anything. `user_skill_todos` and `user_company_prep` tables exist
-  in `schema.sql` (created proactively in Phase A) but have **zero application code reading or
-  writing them** — they're reserved for whenever this redesign actually happens. Do not write docs
-  or features that assume subskills/todos exist in the UI; they don't yet.
-- **Company prep checklists** (the checkboxes on each `CompanyDetail.jsx` page) are still plain
-  `localStorage` keyed only by `ts-prep-{companyId}` — **not even namespaced per user**, unlike
-  missions/skill-levels. This means on a shared browser, two different accounts currently see and
-  edit the *same* checklist state for a given company. This is a real, known gap, flagged to the
-  user, not yet fixed as of this writing (they asked to prioritize documentation first). The fix
-  is mechanically identical to the missions/skillLevels namespacing already done in `App.jsx` —
-  should be quick whenever it's picked up.
-- **Progress-over-time graphs** were requested (overall readiness graph on Home, per-skill graphs
-  on `SkillDetail`, date range 2026-08-18 to 2026-11-30) but **not yet built** as of this writing.
-  Needs: a decision on whether to add real historical snapshotting (a new `skill_snapshots` table,
-  upserted once/day on visit) vs. a synthetic ideal-pace-only line; a charting library (none
-  installed yet — Recharts is the natural choice); the `dataviz` skill should be consulted before
-  writing any chart code, per its own instructions.
+- **Subskill depth is thin on most of the 101 skills** — 324 subskills total, average 3.2/skill,
+  against an explicit ~10/skill ask. See the dated entry above for which skills need it most.
+  This is the single most important open item as of this writing.
+- **Subskill `weight` isn't wired to anything yet.** Each subskill carries a `weight` field
+  (mirroring the original Phase C design) but `skillLevels`/company readiness still reads the
+  manually-set slider, not a subskill/todo-derived proficiency. A real "derive skill % from
+  weighted subskill completion" formula (parallel to how `hunterLevel` now derives Level from raw
+  todo-completion count) is still a future step, not done.
+- **Missions, skill-levels, subskill-todos, and company-prep-checklists are all still
+  `localStorage`-based**, just properly namespaced per user now (not migrated to Supabase tables
+  — `user_skill_todos`/`user_company_prep` exist in `schema.sql` from Phase A but have zero
+  application code reading/writing them yet).
+- **Per-skill historical trails aren't tracked** — only the aggregate `levelHistory` snapshot
+  (used by Home's chart) is. SkillDetail's chart shows a single "today" point against the
+  reference line, not a real trail, by deliberate scope trade-off.
 - **Email confirmation is disabled** on Supabase Auth (deliberate, for low-friction testing) —
   anyone can sign up with any typed email, no verification. Flagged to the user as a
   now-it's-public consideration; no decision to change it has been made.

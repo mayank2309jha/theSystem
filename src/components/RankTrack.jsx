@@ -1,7 +1,15 @@
-import { RANK_ORDER, RANK_STYLES, getRankProgress } from "../lib/ranks";
+import { RANK_ORDER, RANK_STYLES, getRankProgress, getLevelProgress } from "../lib/ranks";
 
-export default function RankTrack({ xp }) {
-  const { current, next, isMaxRank, xpIntoRank, xpForNext, progress } = getRankProgress(xp);
+// Accepts either `xp` (mission-driven Hunter Rank, uneven thresholds) or
+// `level` (skill-mastery-driven Level 1-100, even bands) — exactly one
+// should be passed. Same visual track either way.
+export default function RankTrack({ xp, level, unitLabel = "XP" }) {
+  const usingLevel = level !== undefined;
+  const { current, next, isMaxRank, progress, xpIntoRank, xpForNext, levelIntoRank, levelForNext } = usingLevel
+    ? getLevelProgress(level)
+    : getRankProgress(xp);
+  const into = usingLevel ? levelIntoRank : xpIntoRank;
+  const forNext = usingLevel ? levelForNext : xpForNext;
   const currentIndex = RANK_ORDER.indexOf(current);
 
   return (
@@ -46,7 +54,7 @@ export default function RankTrack({ xp }) {
                 Rank {current} → Rank {next}
               </span>
               <span>
-                {xpIntoRank} / {xpForNext} XP
+                {into} / {forNext} {unitLabel}
               </span>
             </div>
             <div className="h-2 w-full bg-system-void rounded-full overflow-hidden border border-system-border">

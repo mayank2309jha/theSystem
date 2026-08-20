@@ -156,8 +156,35 @@ create policy "user_resumes_all_own" on public.user_resumes
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ============================================================================
+-- 5b. user_raid_resumes — Resume Raid: MANY resumes per user (no unique
+--     constraint, unlike user_resumes above which is the single "My Resume"
+--     slot). Objects live in the same private "resumes" bucket under
+--     {user_id}/raid/{id}.pdf — no new bucket or storage policy needed,
+--     since the existing "resumes" bucket policy already scopes access to
+--     anything under the caller's own {user_id}/ folder, regardless of what
+--     comes after it.
+-- ============================================================================
+
+create table if not exists public.user_raid_resumes (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users(id) on delete cascade,
+  storage_path      text not null,
+  original_filename text not null,
+  mime_type         text not null,
+  file_size         int not null,
+  created_at        timestamptz not null default now()
+);
+
+alter table public.user_raid_resumes enable row level security;
+
+drop policy if exists "user_raid_resumes_all_own" on public.user_raid_resumes;
+create policy "user_raid_resumes_all_own" on public.user_raid_resumes
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ============================================================================
 -- 6. Storage — private "resumes" bucket, one folder per user
 --    Objects must be uploaded at path: {user_id}/resume.pdf
+--    (Resume Raid additionally uses {user_id}/raid/{id}.pdf in this same bucket.)
 -- ============================================================================
 
 insert into storage.buckets (id, name, public)

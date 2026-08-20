@@ -7,6 +7,32 @@ export function getCompany(id) {
   return companies.find((c) => c.id === id);
 }
 
+// Total number of proof-of-skill todos across the entire catalog — the
+// denominator for hunterLevel below. Computed once at module load since
+// skillCatalog is static.
+const TOTAL_TODO_COUNT = skillCatalog.reduce(
+  (sum, skill) => sum + (skill.subskills ?? []).reduce((s, sub) => s + (sub.todos?.length ?? 0), 0),
+  0
+);
+
+// The "power scaling" system: overall progress toward S-Rank divided into
+// 100 discrete levels — Level 1 (the floor; a brand-new account with zero
+// checked todos reads as "Level 1", never "Level 0") up to Level 100 (every
+// proof-of-skill todo across the whole catalog checked off). Deliberately
+// driven by TODO COMPLETION, not the manually-set skill sliders — those
+// default to a non-zero E-Rank seed (10), which would make a fresh account
+// read as Level 10 instead of Level 1. Checking off todos is "doing more
+// skills," which is literally what should move this number. The existing
+// E-S rank ladder still applies on top of this exact same number via
+// skillRankForLevel, so "Level 34" and "C-Rank" are two views of one
+// underlying value, not two systems to reconcile.
+export function hunterLevel(subskillTodos) {
+  if (TOTAL_TODO_COUNT === 0) return 1;
+  const checkedCount = Object.keys(subskillTodos).length;
+  const pct = (checkedCount / TOTAL_TODO_COUNT) * 100;
+  return Math.max(1, Math.min(100, Math.round(pct)));
+}
+
 export function getSkill(id) {
   return skillCatalog.find((s) => s.id === id);
 }

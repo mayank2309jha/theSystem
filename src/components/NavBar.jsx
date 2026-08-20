@@ -12,6 +12,7 @@ const ownerOnlyTabs = [{ to: "/resumes", label: "Resume Maxing" }];
 
 const trailingTabs = [
   { to: "/resume", label: "My Resume" },
+  { to: "/resume-raid", label: "Resume Raid" },
   { to: "/profile", label: "Profile" },
 ];
 

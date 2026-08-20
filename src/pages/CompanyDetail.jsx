@@ -4,16 +4,15 @@ import OpenResumeButton from "../components/OpenResumeButton";
 import { skillRankForLevel } from "../lib/ranks";
 import { getCompany, companySkillReadiness, formatINR, resumeAlignmentScore } from "../lib/prep";
 import { resumeInfo, RESUME_SLUG } from "../data/resumes";
-import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useProfile } from "../hooks/useProfile";
 import { isOwner } from "../lib/owner";
 
 export default function CompanyDetail() {
   const { id } = useParams();
-  const { skillLevels } = useOutletContext();
+  const { skillLevels, companyPrepChecked, toggleCompanyPrepItem } = useOutletContext();
   const { data: profile } = useProfile();
   const company = getCompany(id);
-  const [checked, setChecked] = useLocalStorage(`ts-prep-${id}`, []);
+  const checked = companyPrepChecked[id] ?? [];
 
   if (!company) {
     return (
@@ -29,11 +28,7 @@ export default function CompanyDetail() {
   const alignmentScore = resumeAlignmentScore(company.resume, company);
 
   function toggle(i) {
-    setChecked((prev) => {
-      const next = [...prev];
-      next[i] = !next[i];
-      return next;
-    });
+    toggleCompanyPrepItem(id, i);
   }
 
   return (

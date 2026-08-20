@@ -4,11 +4,24 @@ import StatusWindow from "../components/StatusWindow";
 import CompanyCard from "../components/CompanyCard";
 import SkillGapCard from "../components/SkillGapCard";
 import MissionBoard from "../components/MissionBoard";
+import ProgressChart from "../components/ProgressChart";
 import { companiesSortedByDay, skillPriorities } from "../lib/prep";
 import { skillCatalog } from "../data/skills";
 
 export default function Home() {
-  const { playerName, xp, missionStats, skillLevels, missions, addMission, setMissionStatus, removeMission } = useOutletContext();
+  const {
+    playerName,
+    xp,
+    level,
+    levelHistory,
+    today,
+    missionStats,
+    skillLevels,
+    missions,
+    addMission,
+    setMissionStatus,
+    removeMission,
+  } = useOutletContext();
 
   const priorityCompanies = useMemo(() => companiesSortedByDay().slice(0, 6), []);
   const topPriorities = useMemo(() => skillPriorities(skillLevels).slice(0, 6), [skillLevels]);
@@ -18,9 +31,21 @@ export default function Home() {
       <StatusWindow
         playerName={playerName}
         xp={xp}
+        level={level}
         missionStats={missionStats}
         skillStats={{ count: skillCatalog.length }}
       />
+
+      <div className="system-panel p-6">
+        <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Progress Over Time</p>
+        <ProgressChart
+          history={levelHistory}
+          currentLevel={level}
+          todayStr={today}
+          title="Overall Readiness — Aug 18 to Nov 30"
+          subtitle="Your Level over time against an even pace to Level 100. One point per day you've used the app — it fills in as you keep going, not retroactively."
+        />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="system-panel p-6">
@@ -41,8 +66,8 @@ export default function Home() {
             companies want different things; browse Company Specific Prep to see exactly what your own targets need.
           </p>
           <div className="space-y-2.5">
-            {topPriorities.map(({ skill, level, currentRank, milestone }) => (
-              <SkillGapCard key={skill.id} skill={skill} level={level} currentRank={currentRank} milestone={milestone} />
+            {topPriorities.map(({ skill, level: skillLevel, currentRank, milestone }) => (
+              <SkillGapCard key={skill.id} skill={skill} level={skillLevel} currentRank={currentRank} milestone={milestone} />
             ))}
           </div>
         </div>

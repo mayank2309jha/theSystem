@@ -1,11 +1,12 @@
 import { Link, useParams, useOutletContext } from "react-router-dom";
 import RankPill from "../components/RankPill";
+import ProgressChart from "../components/ProgressChart";
 import { skillRankForLevel, proficiencyLabel, rankIndex } from "../lib/ranks";
 import { getSkill, skillUnlockCurve, nextMilestone } from "../lib/prep";
 
 export default function SkillDetail() {
   const { id } = useParams();
-  const { skillLevels, setSkillLevel } = useOutletContext();
+  const { skillLevels, setSkillLevel, subskillTodos, toggleSubskillTodo, today } = useOutletContext();
   const skill = getSkill(id);
 
   if (!skill) {
@@ -23,6 +24,7 @@ export default function SkillDetail() {
   const curve = skillUnlockCurve(id);
   const milestone = nextMilestone(id, level);
   const total = curve[curve.length - 1].total;
+  const subskills = skill.subskills ?? [];
 
   return (
     <div className="space-y-6">
@@ -73,32 +75,62 @@ export default function SkillDetail() {
           <div className="h-full bg-gradient-to-r from-system-blue-dim to-system-blue transition-all" style={{ width: `${level}%` }} />
         </div>
         <p className="text-[11px] text-slate-500 mt-1.5">{proficiencyLabel(level)} · drag to update as you actually improve</p>
+
+        <div className="mt-5 pt-4 border-t border-system-border">
+          <ProgressChart
+            history={[{ date: today, level }]}
+            currentLevel={level}
+            todayStr={today}
+            title="This Skill's Pace"
+            subtitle="A day-by-day trail isn't tracked per skill (only overall progress is, on Home) — this shows where an even pace to full mastery would put you today versus where you actually are."
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="system-panel p-6">
-          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-3">Roadmap to S-Rank</p>
-          <ol className="space-y-2.5">
-            {skill.roadmap.map((step, i) => (
-              <li key={i} className="text-sm text-slate-300 flex gap-2.5">
-                <span className="font-display text-system-blue/70 shrink-0">{String(i + 1).padStart(2, "0")}</span>
-                <span>{step}</span>
-              </li>
-            ))}
-          </ol>
-
-          {skill.resources.length > 0 && (
-            <>
-              <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mt-5 mb-2">Resources</p>
-              <ul className="space-y-1.5">
-                {skill.resources.map((r, i) => (
-                  <li key={i} className="text-sm text-slate-400 border-l-2 border-system-blue/50 pl-2.5">
-                    {r}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Subskills</p>
+          <p className="text-[11px] text-slate-500 mb-3">
+            What you need to actually be able to do to say you know each of these — check them off as you genuinely
+            can.
+          </p>
+          {subskills.length === 0 && <p className="text-sm text-slate-500 italic">No subskill breakdown yet for this skill.</p>}
+          <div className="space-y-4">
+            {subskills.map((sub) => {
+              const todos = sub.todos ?? [];
+              const doneCount = todos.filter((_, i) => subskillTodos[`${id}:${sub.id}:${i}`]).length;
+              return (
+                <div key={sub.id} className="border border-system-border bg-system-void/30 rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-slate-200">{sub.name}</p>
+                    <span className="text-[10px] text-slate-500 font-display">
+                      {doneCount}/{todos.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {todos.map((todo, i) => {
+                      const todoId = `${id}:${sub.id}:${i}`;
+                      const checked = !!subskillTodos[todoId];
+                      return (
+                        <label key={todoId} className="flex items-start gap-2.5 cursor-pointer group">
+                          <button
+                            type="button"
+                            onClick={() => toggleSubskillTodo(todoId)}
+                            className={`shrink-0 mt-0.5 w-4 h-4 rounded border flex items-center justify-center text-[10px] transition-colors ${
+                              checked ? "bg-system-blue border-system-blue text-system-void" : "border-system-border text-transparent group-hover:border-system-blue/60"
+                            }`}
+                          >
+                            ✓
+                          </button>
+                          <span className={`text-xs ${checked ? "text-slate-500 line-through" : "text-slate-300"}`}>{todo}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className="system-panel p-6">

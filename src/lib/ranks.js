@@ -71,6 +71,31 @@ export function rankIndex(rank) {
   return RANK_ORDER.indexOf(rank);
 }
 
+// Same shape as getRankProgress (used by the XP-driven RankTrack display),
+// but driven by the 0-100 Level scale's even 6-way bands instead of the
+// uneven XP thresholds — so RankTrack can render either progress type.
+export function getLevelProgress(level) {
+  const current = skillRankForLevel(level);
+  const currentIndex = RANK_ORDER.indexOf(current);
+  const isMaxRank = currentIndex === RANK_ORDER.length - 1;
+  const next = isMaxRank ? null : RANK_ORDER[currentIndex + 1];
+
+  const floor = currentIndex * SKILL_BAND;
+  const ceiling = isMaxRank ? floor : (currentIndex + 1) * SKILL_BAND;
+  const span = ceiling - floor;
+  const progress = isMaxRank ? 1 : Math.min(1, (level - floor) / span);
+
+  return {
+    current,
+    next,
+    isMaxRank,
+    level,
+    levelIntoRank: Math.round(level - floor),
+    levelForNext: isMaxRank ? 0 : Math.round(ceiling - floor),
+    progress,
+  };
+}
+
 // How far (in rank-steps) a current skill level is from a required rank. 0 = met/exceeded.
 export function rankGap(currentLevel, requiredRank) {
   const currentRank = skillRankForLevel(currentLevel);

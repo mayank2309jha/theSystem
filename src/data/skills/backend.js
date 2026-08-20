@@ -1,0 +1,100 @@
+// Backend frameworks & API design.
+export const backendSkills = [
+  {
+    id: "nodejs",
+    name: "Node.js",
+    category: "Backend & APIs",
+    level: 10,
+    why: "Powers the Order Matching Engine's REST->gRPC gateway — named explicitly as an example skill to track.",
+    subskills: [
+      { id: "node-event-loop", name: "Event Loop & Non-blocking I/O", weight: 3, todos: ["Explain why Node.js handles I/O concurrency without OS threads per request", "Demonstrate a blocking-vs-non-blocking code example and its throughput difference"] },
+      { id: "node-express", name: "Express.js Fundamentals", weight: 2, todos: ["Build a REST API with proper middleware chaining and error handling", "Explain middleware execution order with a concrete example"] },
+      { id: "node-streams", name: "Streams", weight: 1, todos: ["Process a large file using Node streams instead of loading it fully into memory", "Explain backpressure in the context of Node streams"] },
+      { id: "node-npm-ecosystem", name: "Package Management & npm", weight: 1, todos: ["Explain semantic versioning and lockfile purpose", "Audit a project's dependencies for a real vulnerability using npm audit"] },
+    ],
+  },
+  {
+    id: "spring-boot",
+    name: "Spring Boot",
+    category: "Backend & APIs",
+    level: 10,
+    why: "The framework behind the PostgreSQL Index Advisor — a real, demonstrated backend strength.",
+    subskills: [
+      { id: "spring-di", name: "Dependency Injection", weight: 2, todos: ["Explain what @Autowired/@Component actually do under the hood", "Design a service with constructor injection and explain why it's preferred over field injection"] },
+      { id: "spring-data-jpa", name: "Spring Data JPA", weight: 2, todos: ["Build a repository layer with custom queries", "Explain the N+1 query problem and how to avoid it with fetch joins"] },
+      { id: "spring-rest", name: "REST Controllers & Validation", weight: 2, todos: ["Build a controller with request validation and proper HTTP status codes", "Explain @RequestBody vs @RequestParam vs @PathVariable"] },
+      { id: "spring-config", name: "Configuration & Profiles", weight: 1, todos: ["Set up environment-specific application properties/profiles", "Explain externalized configuration's role in a 12-factor app"] },
+    ],
+  },
+  {
+    id: "fastapi",
+    name: "FastAPI",
+    category: "Backend & APIs",
+    level: 10,
+    why: "Powers the Search & Retrieval Engine's query service and the Multi-Model NLP Platform's serving layer.",
+    subskills: [
+      { id: "fastapi-pydantic", name: "Pydantic Models & Validation", weight: 2, todos: ["Build request/response models with nested validation", "Explain how Pydantic's validation differs from manual dict-checking"] },
+      { id: "fastapi-async-routes", name: "Async Route Handlers", weight: 2, todos: ["Write an async endpoint that calls another async service", "Explain when a sync route in FastAPI can block the whole event loop"] },
+      { id: "fastapi-dependency-injection", name: "Dependency Injection System", weight: 1, todos: ["Use FastAPI's Depends() for a real cross-cutting concern (auth, DB session)", "Explain how dependency overrides help with testing"] },
+    ],
+  },
+  {
+    id: "flask",
+    name: "Flask",
+    category: "Backend & APIs",
+    level: 10,
+    why: "Powers NETRA's full-stack backend — a lighter-weight Python framework, good contrast to FastAPI's async-first design.",
+    subskills: [
+      { id: "flask-blueprints", name: "Blueprints & App Structure", weight: 1, todos: ["Organize a real project's routes into blueprints", "Explain the application factory pattern"] },
+      { id: "flask-jwt-auth", name: "JWT Authentication in Flask", weight: 2, todos: ["Implement login + token-protected routes from scratch", "Explain token refresh flow and why access tokens should be short-lived"] },
+      { id: "flask-orm", name: "SQLAlchemy ORM", weight: 2, todos: ["Model relational data with SQLAlchemy including a many-to-many relationship", "Explain lazy vs eager loading trade-offs"] },
+    ],
+  },
+  {
+    id: "rest-api-design",
+    name: "REST API Design",
+    category: "Backend & APIs",
+    level: 10,
+    why: "Appears across every backend project — proper API design is a cross-cutting skill independent of framework.",
+    subskills: [
+      { id: "rest-resource-modeling", name: "Resource Modeling & Naming", weight: 2, todos: ["Design a RESTful resource hierarchy for a real domain (not CRUD-by-accident)", "Explain when an action doesn't fit REST and how you'd handle it"] },
+      { id: "rest-status-codes", name: "HTTP Status Codes & Semantics", weight: 1, todos: ["Correctly choose status codes for 10 different real scenarios", "Explain idempotency and which HTTP methods guarantee it"] },
+      { id: "rest-versioning", name: "API Versioning", weight: 1, todos: ["Design a versioning strategy (URL/header-based) for a real breaking change", "Explain backward-compatibility trade-offs of each versioning approach"] },
+      { id: "rest-pagination", name: "Pagination & Filtering", weight: 1, todos: ["Implement cursor-based and offset-based pagination, explaining the trade-off", "Design query-param filtering for a list endpoint"] },
+    ],
+  },
+  {
+    id: "graphql",
+    name: "GraphQL",
+    category: "Backend & APIs",
+    level: 10,
+    why: "A common alternative API paradigm to REST — worth understanding the trade-offs even if not yet used on a project.",
+    subskills: [
+      { id: "graphql-schema-design", name: "Schema Design", weight: 2, todos: ["Design a GraphQL schema for a real domain with proper types/relationships", "Explain over-fetching/under-fetching and how GraphQL addresses it"] },
+      { id: "graphql-resolvers", name: "Resolvers & N+1 Problem", weight: 2, todos: ["Implement a resolver and explain the N+1 query risk it introduces", "Use a dataloader pattern to batch resolver queries"] },
+    ],
+  },
+  {
+    id: "grpc",
+    name: "gRPC",
+    category: "Backend & APIs",
+    level: 10,
+    why: "Used in the Order Matching Engine's REST->gRPC gateway with shared Protobuf contracts across Rust and Node.js.",
+    subskills: [
+      { id: "grpc-protobuf", name: "Protobuf Contract Design", weight: 2, todos: ["Write a .proto file for a real service and generate client/server code", "Explain schema evolution rules (adding fields safely) in Protobuf"] },
+      { id: "grpc-streaming", name: "Streaming RPCs", weight: 1, todos: ["Implement a unary and a streaming RPC and explain when each fits", "Explain gRPC's performance advantage over JSON REST for internal services"] },
+    ],
+  },
+  {
+    id: "jwt-auth",
+    name: "JWT & Authentication",
+    category: "Backend & APIs",
+    level: 10,
+    why: "Used in NETRA (JWT auth) and the Order Matching Engine (Keycloak OIDC) — a recurring, testable backend concern.",
+    subskills: [
+      { id: "jwt-structure", name: "JWT Structure & Verification", weight: 2, todos: ["Decode a real JWT by hand and explain header/payload/signature", "Implement token verification middleware from scratch"] },
+      { id: "jwt-refresh-tokens", name: "Refresh Token Rotation", weight: 2, todos: ["Implement refresh-token rotation on top of a basic JWT setup", "Explain the security reasoning behind short-lived access tokens"] },
+      { id: "auth-oidc", name: "OAuth2 / OIDC", weight: 2, todos: ["Walk through the OIDC authorization-code flow step by step from memory", "Explain the difference between authentication (OIDC) and authorization (OAuth2 scopes)"] },
+    ],
+  },
+];
