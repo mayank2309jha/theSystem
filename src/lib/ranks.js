@@ -95,9 +95,3 @@ export function getLevelProgress(level) {
     progress,
   };
 }
-
-// How far (in rank-steps) a current skill level is from a required rank. 0 = met/exceeded.
-export function rankGap(currentLevel, requiredRank) {
-  const currentRank = skillRankForLevel(currentLevel);
-  return Math.max(0, rankIndex(requiredRank) - rankIndex(currentRank));
-}

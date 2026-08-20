@@ -35,10 +35,10 @@ it is.
   each with required skills (per-skill target rank), your **Proven** rank
   against each (evidence-based — see Skill Maxing below, never the
   self-assessment slider), DSA difficulty (plus an estimated contest-rating
-  bar, see below), core CS subjects to prepare, which projects to lead with,
-  real interview-round breakdowns where a senior actually reported them, and
-  a checkable prep roadmap.
-- **Skill Maxing** — 101 skills (React, HLD, LLD, Node, Postgres, and so on)
+  bar, see below), core CS subjects to prepare, real interview-round
+  breakdowns where a senior actually reported them, and a checkable prep
+  roadmap.
+- **Skill Maxing** — 141 skills (React, HLD, LLD, Node, Postgres, and so on)
   spanning DSA, systems, ML, databases, cloud/devops, interview craft, etc.,
   each broken down into subskills (e.g. React → React Hooks, React Router)
   with concrete proof-of-skill todos under every subskill. Your rank is
@@ -146,10 +146,11 @@ src/
   data/            Static content — the actual placement/resume/skill knowledge base
     companies.js      36 companies: role, CTC, skills required, rounds, prep tips
     skills.js         thin re-export of skills/index.js (kept so old imports still work)
-    skills/           101 skills across 17 category files, aggregated via index.js — each
-                      skill has subskills, each subskill has proof-of-skill todos (324
-                      subskills / 648 todos total; see docs/CONTEXT.md for the honest
-                      subskill-depth gap against the ~10/skill target)
+    skills/           141 skills across 17 category files, aggregated via index.js — each
+                      skill has subskills (1,662 total). The original 324 subskills have
+                      proof-of-skill todos (648 total); the 1,341 added 2026-08-21 carry
+                      knowledgePoints instead and don't yet contribute to Proven scoring
+                      (see docs/CONTEXT.md entry 11)
     skillKeywords.js  keyword lists the resume checkers (and Resume Raid) match uploaded text against
     resumes.js        resume metadata + filename<->slug mapping
     resumeWeights.js  per-resume skill-weight tables + domain bonuses
@@ -349,6 +350,10 @@ to preserve its zero-Supabase-network-calls guarantee. Every authenticated page 
 via `useSkillCatalog()` (fetched once in `App.jsx`, threaded through `outletContext` as `catalog`).
 **To add or edit a skill**: edit the static files in `src/data/skills/` as before, then re-run the
 seed script — don't edit Supabase rows by hand and expect the static files to catch up on their own.
+Currently 141 skills / 1,662 subskills / 5,150 knowledge points (`subskills.knowledge_points` —
+supporting facts/terms for a future quiz system, never independently mastery-tracked; added
+2026-08-21 alongside a merge of 40 new skills from a second reference catalog — see `docs/CONTEXT.md`
+entry 11 for the full taxonomy rationale).
 
 Regenerating the auto-generated docs after editing `src/data/companies.js`:
 
@@ -428,26 +433,35 @@ now that GitHub is connected.
     "Kafka — 3.1/6" with a Weak Areas callout on `SkillDetail`. Question banks, quizzes, and
     automated spaced repetition are explicitly NOT built — the data model is architected for them,
     not the modules themselves.
+12. **Fixed a real Resume Alignment bug + a SKILL/SUBSKILL/KNOWLEDGE POINT taxonomy pass + merged in
+    40 new skills** (2026-08-21). Root cause of a 0%-alignment-with-nonzero-confidence bug: the
+    seed script from step 11 had never actually run against the live database — fixed by running it.
+    Introduced a `subskills.knowledge_points` column (supporting facts/terms, never independently
+    mastery-tracked — SUBSKILL stays the sole atomic mastery unit) and merged a second,
+    independently-authored reference catalog (two PDFs) into the existing one: 60 of its 100 skills
+    folded into existing skills as new subskills, 40 became genuinely new top-level skills — no
+    existing id, name, or todo was changed or removed. **Catalog is now 141 skills, 1,662 subskills,
+    5,150 knowledge points.** Also fixed a real scoring bug this surfaced: `provenSkillLevel` was
+    counting zero-todo subskills' weight toward the average (diluting scores toward 0 for anything
+    with no "prove it" tasks yet) — now excluded from the average entirely until real todos exist.
 
 ## Roadmap / possible next steps
 
 Nothing below is committed — gaps and ideas worth considering as the site keeps evolving. Full
 detail on all of these in `docs/CONTEXT.md`'s "not built yet" section:
 
-- **ACTION REQUIRED right now**: the skill catalog migration needs schema.sql re-run AND the seed
-  script run before Skill Maxing/Company Prep/Resume Raid show anything real — see "Running it."
+- **ACTION REQUIRED right now**: the `knowledge_points` column (step 12) exists in `schema.sql` but
+  not yet on the live table, and the seed script needs a re-run to push the new 141-skill catalog —
+  see "The skill catalog" under "Running it."
 - **Question banks, quiz-accuracy tracking, overconfidence flagging, automated spaced repetition,
   and resume-defense mode are all explicitly not built** — Mastery's data model (schema, formulas)
   supports them arriving later without a redesign, but none of the modules themselves exist.
 - **No UI for creating custom skills/subskills yet** — the schema (`skills.owner_id`, RLS) supports
   it; there's no "add a skill" form anywhere in the app.
-- **Phase 6 of the CLAIMED/PROVEN/RELEVANT plan — deep subskill-depth expansion for the owner's
-  actual highest-priority skills — isn't started.** Flagged in the plan itself as a large
-  content-authoring effort needing its own dedicated pass, distinct from Phases 1-5's architecture
-  work. Same underlying gap as the next bullet.
-- **Subskill depth falls short of spec on most of the 101 skills** — 324 subskills total, average
-  3.2/skill, against an explicit ~10/skill ask. `dsa` (11) and `hld` (10) already meet the bar;
-  most others (GraphQL, MySQL, MongoDB, TDD, and more) currently sit at 1–2.
+- **Real todos ("prove it" tasks) don't exist yet for the ~1,341 subskills added in step 12** — they
+  carry knowledge points instead, and are deliberately excluded from Proven scoring until real todos
+  are authored for them (see `provenSkillLevel`). Writing those todos is a large, separate,
+  content-authoring effort — not started.
 - **Per-skill historical progress trails aren't tracked** — only the aggregate `levelHistory` (used
   by Home's chart) is; SkillDetail's chart shows a single "today" point, a deliberate scope
   trade-off, not an oversight.

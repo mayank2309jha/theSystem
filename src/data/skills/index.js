@@ -7,10 +7,16 @@
 // other hunters using this app have different tracks (mobile, security,
 // data engineering, etc.) that Mayank's own resumes never needed to cover.
 //
-// 101 top-level skills as of this writing, ~10 subskills each on average,
-// each subskill with 2-3 concrete "prove you know this" todos — see
-// docs/System.md and docs/SKILLS.md for how this feeds into the app's
-// proficiency/readiness calculations.
+// 141 top-level skills as of this writing (101 original + 40 added 2026-08-21
+// from a second reference catalog spanning PDFs, unioned in — see
+// docs/CONTEXT.md). The original 101 skills' subskills each carry 2-3
+// concrete "prove you know this" todos that drive Proven scoring (see
+// docs/System.md); the newly merged/added subskills carry knowledgePoints
+// (supporting facts/terms, not independently mastery-tracked — see
+// docs/System.md's taxonomy note) but start with empty todos, so they don't
+// yet contribute to Proven until real "prove it" tasks are authored for them
+// — see lib/prep.js's provenSkillLevel, which deliberately excludes
+// zero-todo subskills from that average rather than counting them as failed.
 import { coreCSSkills } from "./coreCS.js";
 import { languagesSkills } from "./languages.js";
 import { frontendSkills } from "./frontend.js";

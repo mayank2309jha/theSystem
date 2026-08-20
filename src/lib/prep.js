@@ -1,6 +1,6 @@
 import { companies } from "../data/companies.js";
 import { resumeSkillWeights, FLAT_WEIGHT_SKILLS, domainBonus } from "../data/resumeWeights.js";
-import { RANK_ORDER, rankGap, rankIndex, skillRankForLevel } from "./ranks.js";
+import { RANK_ORDER, rankIndex, skillRankForLevel } from "./ranks.js";
 
 // NOTE: every function below that needs the skill catalog takes it as a
 // parameter (`catalog`) rather than importing one directly — the catalog now
@@ -60,9 +60,10 @@ export function provenSkillLevel(skill, subskillTodos) {
   let weightTotal = 0;
   for (const sub of subskills) {
     const todos = sub.todos ?? [];
+    if (todos.length === 0) continue; // no evidence mechanism defined yet — doesn't count toward the average
     const weight = sub.weight ?? 1;
     const doneCount = todos.filter((_, i) => subskillTodos[`${skill.id}:${sub.id}:${i}`]).length;
-    const progress = todos.length === 0 ? 0 : doneCount / todos.length;
+    const progress = doneCount / todos.length;
     weightedSum += progress * weight;
     weightTotal += weight;
   }
@@ -161,13 +162,6 @@ export function skillPriorities(catalog, levels) {
     })
     .filter((s) => s.milestone)
     .sort((a, b) => b.milestone.newlyUnlockedCount - a.milestone.newlyUnlockedCount);
-}
-
-export function companySkillReadiness(catalog, company, levels) {
-  return company.skills.map((req) => {
-    const level = levels[req.id] ?? getSkill(catalog, req.id)?.level ?? 0;
-    return { ...req, skill: getSkill(catalog, req.id), level, gap: rankGap(level, req.requiredRank) };
-  });
 }
 
 // The minimum proficiency % needed to BE a given rank — the same 6-way

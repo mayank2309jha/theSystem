@@ -5,8 +5,7 @@ import OpenResumeButton from "../components/OpenResumeButton";
 import MethodologyButton from "../components/MethodologyButton";
 import CompanySkillMatrix from "../components/CompanySkillMatrix";
 import { useClaimedSkills } from "../hooks/useClaimedSkills";
-import { skillRankForLevel } from "../lib/ranks";
-import { getCompany, companySkillReadiness, companyReadinessFromSkillLevels, formatINR, resumeAlignmentScore } from "../lib/prep";
+import { getCompany, companyReadinessFromSkillLevels, formatINR, resumeAlignmentScore } from "../lib/prep";
 import { resumeInfo, RESUME_SLUG } from "../data/resumes";
 import { useProfile } from "../hooks/useProfile";
 import { useResume } from "../hooks/useResume";
@@ -54,7 +53,6 @@ export default function CompanyDetail() {
     );
   }
 
-  const readiness = companySkillReadiness(catalog, company, provenLevels);
   const resume = resumeInfo[company.resume];
   const alignmentScore = resumeAlignmentScore(company.resume, company);
 
@@ -110,32 +108,7 @@ export default function CompanyDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="system-panel p-6">
-          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Skill Requirement</p>
-          <p className="text-[11px] text-slate-500 mb-3">
-            Your rank here is <strong className="text-slate-400">Proven</strong> — from checked subskill evidence,
-            not self-assessment. Click a skill to add evidence; it updates everywhere, not just here.
-          </p>
-          <div className="space-y-2.5">
-            {readiness.map((r) => {
-              const currentRank = skillRankForLevel(r.level);
-              return (
-                <Link
-                  key={r.id}
-                  to={`/skill/${r.id}`}
-                  className="flex items-center justify-between border border-system-border bg-system-void/30 rounded px-3 py-2 hover:border-system-blue transition-colors group"
-                >
-                  <span className="text-sm text-slate-200 group-hover:text-system-blue transition-colors">{r.skill?.name ?? r.id}</span>
-                  <div className="flex items-center gap-2">
-                    <RankPill rank={currentRank} />
-                    <span className="text-slate-600 text-xs">→</span>
-                    <RankPill rank={r.requiredRank} />
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-
-          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mt-5 mb-2">DSA Level Required</p>
+          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-2">DSA Level Required</p>
           <div className="flex items-center gap-3 flex-wrap">
             <RankPill rank={company.dsaLevel} label="DSA" />
             {profile?.contest_platform && (
@@ -166,15 +139,6 @@ export default function CompanyDetail() {
         </div>
 
         <div className="system-panel p-6">
-          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-3">Important Projects</p>
-          <ul className="space-y-1.5 mb-5">
-            {company.projects.map((p) => (
-              <li key={p} className="text-sm text-slate-300 border-l-2 border-system-blue/50 pl-2.5">
-                {p}
-              </li>
-            ))}
-          </ul>
-
           {owner ? (
             <>
               <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-2">Which Resume to Send</p>

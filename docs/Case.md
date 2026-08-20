@@ -61,11 +61,14 @@ and the app owner (one specific account). Each sees a meaningfully different app
 3. They click around **Company Specific Prep** — full access, 36 companies, searchable/filterable,
    real interview-round writeups where a senior actually reported them (flagged "Unverified prep"
    in a crimson badge otherwise).
-4. They click into a company (e.g. Apple): see required skills with rank targets, DSA level, core
-   subjects, important projects to lead with — but **not** a "Which Resume to Send" section. Since
-   they're not the owner, that section is replaced with: *"Want to see how your own resume stacks
-   up against this company? Try the public Resume Compatibility Checker."*
-5. **Skill Maxing:** all 101 skills grouped by category, each showing a **Proven** rank driven
+4. They click into a company (e.g. Apple): see required skills with rank targets, DSA level, and
+   core subjects — but **not** a "Which Resume to Send" section or the owner's project list (removed
+   2026-08-21: it was rendering the owner's actual resume project titles unconditionally to every
+   visitor, not just the owner — a real privacy leak in a now-multi-user app). Since they're not the
+   owner, that panel is replaced with **Resume Fit**: if they've uploaded their own resume on My
+   Resume, their own Alignment/Quality/Confidence against this specific company; if not, a prompt to
+   upload one or try the public Resume Compatibility Checker.
+5. **Skill Maxing:** all 141 skills grouped by category, each showing a **Proven** rank driven
    entirely by a subskill/todo checklist — e.g. clicking into "React" shows subskills like "React
    Hooks," "React Router," each with a handful of concrete "prove you can do this" todos. Checking a
    todo is what actually moves both that skill's Proven rank *and* their overall Level number on
@@ -175,7 +178,7 @@ Everything from Case 2–4, plus:
 | Surface | Anonymous (`/try`) | Any authenticated user | Owner account only |
 |---|---|---|---|
 | Company Specific Prep | ❌ | ✅ | ✅ |
-| Skill Maxing (101 skills, subskills/todos, Level) | ❌ | ✅ | ✅ |
+| Skill Maxing (141 skills, subskills/todos, Level) | ❌ | ✅ | ✅ |
 | Progress Over Time graph | ❌ | ✅ (own history) | ✅ (own history) |
 | Mission Board | ❌ | ✅ (own data) | ✅ (own data) |
 | My Resume (private upload, single slot) | ❌ | ✅ (own resume) | ✅ (own resume) |

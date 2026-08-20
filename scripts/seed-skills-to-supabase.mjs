@@ -37,6 +37,7 @@ const skillRows = skillCatalog.map((s) => ({
   category: s.category,
   why: s.why ?? null,
   default_self_assessment: s.level ?? 10,
+  preparedness_target: s.preparednessTarget ?? null,
   owner_id: null, // global/system skill
 }));
 
@@ -47,6 +48,7 @@ const subskillRows = skillCatalog.flatMap((s) =>
     name: sub.name,
     importance_weight: sub.weight ?? 1,
     todos: sub.todos ?? [],
+    knowledge_points: sub.knowledgePoints ?? [],
   }))
 );
 

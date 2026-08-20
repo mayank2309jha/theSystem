@@ -90,7 +90,7 @@ hand-author anything. The whole pipeline runs **client-side**:
    need the text itself, not just the detected skills. The original two functions were kept
    unchanged so Resume Raid's existing call sites didn't need to change.
 2. **Keyword matching** — `detectSkillLevelsFromText()` lowercases the extracted text and, for
-   each of the 101 skills in the catalog, counts how many **distinct** keywords from that skill's
+   each of the 141 skills in the catalog, counts how many **distinct** keywords from that skill's
    list (`skillKeywords.js`) appear anywhere in the text. Counting distinct keywords rather than raw
    occurrences means one repeated buzzword can't fake high proficiency.
 3. **Level estimate** — match count maps onto a capped proficiency guess:

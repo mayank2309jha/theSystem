@@ -342,10 +342,22 @@ create table if not exists public.subskills (
   interview_frequency_weight  smallint,
   difficulty_weight           smallint,
   todos                       jsonb not null default '[]'::jsonb,
+  -- Supporting facts/terms/commands for this subskill (2026-08-21) — NOT
+  -- independently mastery-tracked. Per the SKILL > SUBSKILL > KNOWLEDGE POINT
+  -- taxonomy: SUBSKILL is the sole atomic unit user_subskill_mastery tracks;
+  -- knowledge points exist to scope future quiz-question generation. Array of
+  -- plain strings, same shape as `todos` above.
+  knowledge_points            jsonb not null default '[]'::jsonb,
   is_archived                 boolean not null default false,
   created_at                  timestamptz not null default now(),
   updated_at                  timestamptz not null default now()
 );
+
+-- Explicit ALTER for the already-live table — the CREATE TABLE above is a
+-- no-op once the table exists, so re-running this file wouldn't otherwise
+-- add the column to the real database.
+alter table public.subskills
+  add column if not exists knowledge_points jsonb not null default '[]'::jsonb;
 
 create index if not exists subskills_skill_id_idx on public.subskills(skill_id);
 

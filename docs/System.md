@@ -94,17 +94,25 @@ Every skill in the 101-skill catalog (`src/data/skills/`, 17 category files aggr
   id, name, category, level: 10,   // level = default seed for the proficiency slider, see below
   why,
   subskills: [
-    { id, name, weight, todos: ["...", "...", ...] }
+    { id, name, weight, todos: ["...", "...", ...], knowledgePoints: ["...", "...", ...] }
   ]
 }
 ```
 
 Checking a todo (`toggleSubskillTodo` in `App.jsx`, todo id format `` `${skillId}:${subskillId}:${todoIndex}` ``)
 is what feeds `hunterLevel` above **and**, per skill, `provenSkillLevel` below. **Current catalog
-size: 101 skills, 324 subskills (avg 3.2/skill), 648 todos** — short of the ~10-subskills-per-skill
-target the catalog was built toward; `dsa` (11) and `hld` (10) already meet the bar, most others
-(GraphQL, MySQL, MongoDB, TDD, and more) currently sit at 1–2. See `docs/CONTEXT.md` for the full
-list and honest accounting of this gap (Phase 6 of the CLAIMED/PROVEN/RELEVANT plan closes it).
+size: 141 skills, 1,662 subskills, 5,150 knowledge points.** The original 324 subskills (avg
+3.2/skill) each carry proof-of-skill `todos` (648 total); 1,341 more were merged in 2026-08-21 from
+a second reference catalog and carry `knowledgePoints` (supporting facts/terms — see the taxonomy
+note below) instead of todos for now. See `docs/CONTEXT.md` entry 11 for the full accounting.
+
+**Taxonomy note (2026-08-21)**: the catalog follows a SKILL → SUBSKILL → KNOWLEDGE POINT hierarchy.
+SUBSKILL is the sole atomic unit that gets independent mastery tracking (`user_subskill_mastery`) —
+the test is "could a candidate plausibly be strong at this subskill while weak at a sibling in the
+same skill, and could you ask 3–10 independent interview questions about it specifically." Knowledge
+points are smaller supporting facts/terms/commands (e.g. subskill "Basic Git workflow" holding
+knowledge points `clone`/`status`/`add`/`commit`/`push`) that scope future quiz-question generation
+but never get their own mastery record.
 
 ## Proven skill — evidence-based, drives everything company-facing
 
@@ -114,18 +122,28 @@ weighted average over that skill's subskills:
 
 ```
 for each subskill:
-  progress = checkedTodos / totalTodos                (0 if the subskill has no todos)
+  if subskill has zero todos: skip entirely (doesn't affect the average — see note below)
+  progress = checkedTodos / totalTodos
   contributes progress × subskill.weight
 
 provenSkillLevel = Σ(progress × weight) / Σ(weight) × 100     (0 if the skill has no subskills at all)
 ```
 
 `subskill.weight` (1–3, authored alongside every subskill when the 101-skill catalog was built) had
-sat unused until this redesign — this is the formula that finally reads it. `provenSkillLevels(subskillTodos)`
+sat unused until this redesign — this is the formula that finally reads it.
+
+**The zero-todo skip (added 2026-08-21)**: 1,341 subskills merged in from a second reference catalog
+have `todos: []` (they carry knowledge points, not proof-of-skill tasks, yet). Originally a
+zero-todo subskill contributed `progress = 0` while still counting its `weight` in the denominator —
+correct for the original 324 subskills (all authored with real todos, so "no todos" never happened),
+but would have silently crashed a skill's Proven score toward 0 as soon as it gained new,
+not-yet-provable subskills — not because any evidence was lost, but because "no evidence mechanism
+defined yet" was being counted as "failed." Fixed by excluding zero-todo subskills from the average
+entirely. `provenSkillLevels(subskillTodos)`
 runs this for the whole catalog → `{skillId: 0-100}`, computed once in `App.jsx` (memoized off
 `subskillTodos`) and threaded through `outletContext` as `provenLevels`. `skillRankForLevel(level)`
 (same 6-equal-band split as everywhere else — see below) turns this into the E→S label shown
-everywhere: `CompanyCard`'s readiness badge, `CompanyDetail`'s "Skill Requirement" list, Home's
+everywhere: `CompanyCard`'s readiness badge, `CompanyDetail`'s Company Skill Matrix, Home's
 "Where to Focus Next," and `SkillDetail`'s own rank badge/milestone messaging all read `provenLevels`,
 not the slider.
 
@@ -197,10 +215,12 @@ readiness = Σ(progress × importance) / Σ(importance) × 100
 map** — it doesn't know or care where `levels` came from. Two conceptually different things feed it
 today, and the app is careful to label the *output* differently depending on which:
 
-- **Company Prep readiness** (`CompanyCard`'s badge, `CompanyDetail`'s "Skill Requirement" list, via
-  `companySkillReadiness`) — fed **`provenLevels`**. This is "do I actually have the skill," shown
-  as "Readiness," which the CLAIMED/PROVEN/RELEVANT terminology explicitly keeps for this
-  skill-based, evidence-driven concept.
+- **Company Prep readiness** (`CompanyCard`'s badge, `CompanyDetail`'s Company Skill Matrix "Proven"
+  column) — fed **`provenLevels`**. This is "do I actually have the skill," shown as "Readiness,"
+  which the CLAIMED/PROVEN/RELEVANT terminology explicitly keeps for this skill-based,
+  evidence-driven concept. (The separate per-skill "Skill Requirement" list that used to sit above
+  the matrix was removed 2026-08-21 — it duplicated the matrix's own Required/Proven columns in a
+  different format; the matrix is now the single, consistent skill display on a company page.)
 - **Resume Alignment** (`/try`, `/resume`, and the non-owner "Resume Fit" panel on `CompanyDetail`,
   via `companiesRankedByReadiness`) — fed **resume-keyword-detected levels** (CLAIMED, not Proven).
   This is "does my resume claim the skill" — a different question, deliberately never called
@@ -228,7 +248,7 @@ actually unlock more companies, and returns how many. This is what drives the "R
 unlocks 12 more companies" language throughout the app — always a concrete, achievable next step,
 never an assumed ceiling.
 
-**`skillPriorities(levels)`** ranks all 101 skills by "how many companies does the next milestone
+**`skillPriorities(levels)`** ranks all 141 skills by "how many companies does the next milestone
 unlock" — the highest-leverage single next move, goal-agnostic by construction. This powers Home's
 "Where to Focus Next" panel (top 6), fed `provenLevels`. Skills already maxed out for every company
 that lists them are excluded from this list (there's nothing left to unlock).

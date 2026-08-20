@@ -39,6 +39,7 @@ export function useSkillCatalog() {
           interviewFrequencyWeight: sub.interview_frequency_weight,
           difficultyWeight: sub.difficulty_weight,
           todos: sub.todos ?? [],
+          knowledgePoints: sub.knowledge_points ?? [],
         });
       }
 

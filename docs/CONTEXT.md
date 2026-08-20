@@ -571,6 +571,113 @@ resume-to-company compatibility checker.
       environment. Until both are done, every authenticated page shows the graceful "couldn't load
       the skill catalog" message described above, not broken functionality, but also not a working
       app. This is the single most important unblocking step for anyone picking this up next.
+      **Resolved 2026-08-21 — see entry 11**: the user added the service-role key and Claude ran the
+      seed script directly; this had never actually been run, which was the root cause of a real bug.
+
+11. **Resume Alignment 0% bug fix + SKILL/SUBSKILL/KNOWLEDGE POINT taxonomy + 40-skill PDF ingestion
+    (2026-08-21).** Three things landed together.
+    - **The bug**: Resume Alignment showed 0% for every company while Confidence stayed non-zero.
+      Root cause confirmed by querying Supabase directly: `skills`/`subskills` existed (schema.sql had
+      been re-run) but had **zero rows** — the seed script (item 10 above) had never actually been
+      run against the live project. `useSkillCatalog()` returned `[]`, so `detectSkillLevelsFromText`
+      had no skills to iterate, `skillLevels` came back `{}`, and every `skillLevels[req.id] ?? 0` in
+      `companyReadinessFromSkillLevels` fell back to 0 — while Confidence's `dataConfidence`/
+      `extractionConfidence` components still computed normally from the resume text and company
+      metadata alone, producing exactly the observed 0%-alignment/67%-confidence split. Fixed by
+      running `node --env-file=.env.local scripts/seed-skills-to-supabase.mjs` directly (Claude ran
+      it, since the service-role key was now in `.env.local`) — confirmed live afterward.
+    - **Taxonomy clarification**: a detailed spec introduced a 4-level hierarchy — DOMAIN > SKILL >
+      SUBSKILL > KNOWLEDGE POINT — with SUBSKILL as the **sole** atomic mastery-tracking unit (test:
+      "3-10 independent interview questions, could be strong at one while weak at a sibling in the
+      same skill"). Knowledge points are smaller supporting facts/terms/commands that must NOT get
+      independent mastery records. Explicit mandate: audit the existing catalog against this before
+      adding more content. **Audit verdict**: spot-checked existing subskills across multiple files —
+      all already pass the subskill test (e.g. `node-event-loop`, `spring-data-jpa`,
+      `grpc-streaming`); none showed the 3-level-nesting anti-pattern from the user's own bad example.
+      No reclassification of the original 324 subskills was needed — they were just missing knowledge
+      points, an additive gap, not a structural violation.
+    - **Schema**: `subskills.knowledge_points jsonb not null default '[]'::jsonb` — same shape as the
+      existing `todos` column, no new table (knowledge points don't get independent identity per the
+      spec). `useSkillCatalog.js` and `seed-skills-to-supabase.mjs` both updated to carry it through.
+      No new UI surface added — the taxonomy doc explicitly scopes the quiz system that would consume
+      these as future work.
+    - **PDF ingestion**: two uploaded PDFs ("Skills & Subskills-1"/"-2") contained an independently
+      authored, already-taxonomy-clean catalog — **100 skills, 1,341 subskills (after removing 3
+      parser-artifact phantom subskills), 5,150 knowledge points**. Extracted via `pdftotext -layout`
+      (not page-image reads — the PDFs were 153 and 115 pages, too large to read as images
+      economically) plus a custom parser script anchored on the document's own "Preparedness
+      target:"/numbered-list structure. Verified the PDF's own structure already matches the user's
+      worked example of *correct* taxonomy (skill 100 "Research & Experimental Methodology"'s
+      "Problem formulation" subskill correctly holds "research question"/"hypotheses"/"assumptions"
+      as knowledge points, not as nested sub-subskills) — confirming the PDFs were the taxonomy-clean
+      reference to merge in, not raw material needing restructuring.
+    - **Merge policy, confirmed via `AskUserQuestion`**: where a PDF skill clearly overlapped an
+      existing skill (e.g. PDF's separate "REST APIs" + "API Design" vs. the existing merged
+      `rest-api-design`; "Data Structures" + "Algorithms" vs. `dsa`), fold into the existing skill
+      rather than creating an adjacent near-duplicate. Of the 100 PDF skills, **60 merged into an
+      existing skill id, 40 became genuinely new skills** — no existing skill/subskill id, name, or
+      todo was ever changed or removed. New skills were placed into the existing 17 per-domain
+      category files by conceptual fit (no new files created). New skill/subskill ids are
+      kebab-case, collision-checked against the full namespace. Generated via a one-off script that
+      text-spliced new subskill lines into each target skill's existing `subskills: [...]` array and
+      appended new skill blocks — verified via `node --check` on every touched file plus a full
+      catalog re-import confirming zero duplicate ids and byte-identical survival of every
+      pre-existing id.
+    - **A real correctness bug this surfaced, fixed before merging**: `provenSkillLevel` in
+      `lib/prep.js` counted a subskill's `weight` toward the denominator even when it had zero todos
+      (`progress = 0` but the weight still diluted the average). All ~1,341 new subskills start with
+      `todos: []` (the PDFs give knowledge points, not "prove it" tasks — authoring real todos for
+      1,341 subskills is separate, larger, deferred work). Left unfixed, merging e.g. 48 new
+      empty-todos subskills into `dsa` (11 existing, real completion history) would have crashed that
+      skill's Proven score toward 0 — not from lost proof, but from being counted as failing evidence
+      that was simply never defined. **Fixed**: subskills with zero todos are now skipped entirely
+      (excluded from both `weightedSum` and `weightTotal`), so "no evidence mechanism yet" means
+      "doesn't affect the score" rather than "counts as failed." Zero behavior change for any of the
+      324 original subskills (all already had real todos).
+    - **`skillKeywords.js`** gained entries for all 40 new skills — caught immediately by
+      `scripts/validate-skill-ids.mjs` (chained into `npm run lint`) flagging each one as "will never
+      be detected from a resume," exactly the check it was built for. One skill
+      (`resume-interview-defense`) deliberately kept an empty list — not resume-detectable, same
+      pattern as existing interview-craft skills.
+    - **Final catalog size: 141 skills, 1,662 subskills, 5,150 knowledge points.**
+    - **Resolved same day**: the user ran the `alter table` in the Supabase SQL Editor, confirmed via
+      a direct column-existence query; Claude then re-ran the seed script — live counts verified by
+      paginated query (a first unpaginated check undercounted knowledge points at 3,359 due to
+      PostgREST's default 1000-row page cap, not a real gap): **141 skills, 1,662 subskills, 5,150
+      knowledge points, all live.** Re-verified the exact bug mechanism directly: fed a synthetic
+      resume through `detectSkillLevelsFromText` against the live catalog and confirmed non-zero
+      CLAIMED levels across 12 skills.
+
+12. **Two more fixes from live user feedback on the new catalog (2026-08-21, same day as entry 11).**
+    - **Privacy leak**: `CompanyDetail.jsx` rendered an "Important Projects" list — the *owner's own*
+      resume project titles (e.g. "Impact of Label Noise on ML Generalization") — completely
+      unconditionally on every company page, visible to **any** logged-in user, not gated by
+      `isOwner(profile)` at all (only the resume-reveal panel below it was owner-gated). In a
+      single-user app this was invisible; in the now-multi-user app it meant any other account could
+      see the owner's personal project names just by opening a company page. User caught this from a
+      screenshot and asked directly why their own resume projects were being exposed. **Fixed**:
+      removed the block entirely (lines were `company.projects.map(...)` reading a static
+      `projects: [...]` array per company in `data/companies.js`) — not gated, just deleted, since the
+      owner-only "Which Resume to Send" panel already covers the "which resume/project to lead with"
+      need for the owner specifically. `company.projects` data itself was left in `companies.js`
+      (still read by `scripts/generate-companies-md.mjs` for the owner's own private `COMPANIES.md`
+      planning doc, which isn't served to other users).
+    - **Redundant skill display, confirmed via `AskUserQuestion`**: the user noticed a company page
+      showed "few" skills and asked whether they matched "the skills overall" — investigation showed
+      two separate skill displays on the same `CompanyDetail.jsx` page reading the *same* small
+      per-company `company.skills` list (a company only requires a handful of the 141 skills, by
+      design — not a bug): a plain "Skill Requirement" list (skill name + current→required rank) and
+      the richer Company Skill Matrix table (Skill/Required/Claimed/Proven/Gap) further down. Asked
+      which mismatch they meant; confirmed they wanted one consistent table, not two different-looking
+      displays of the same data. **Fixed**: removed the "Skill Requirement" list entirely — the matrix
+      already covers Required and Proven (plus Claimed and Gap, which the list didn't have) and each
+      row already links to `/skill/:id`. This orphaned three functions with no other callers, removed
+      as dead code rather than left unused: `companySkillReadiness` (`lib/prep.js`), `rankGap`
+      (`lib/ranks.js`), and the `skillRankForLevel`/`companySkillReadiness` imports in
+      `CompanyDetail.jsx`. Verified live via Playwright screenshot: company page now shows DSA
+      Level/Core Subjects/Resume Fit at top, then the single Company Skill Matrix table, then
+      Interview Rounds/Prep Roadmap — no crash, no leftover "Important Projects" or duplicate skill
+      list.
 
 ## Current architecture snapshot (as of this writing)
 
@@ -587,14 +694,11 @@ resume-to-company compatibility checker.
 
 ## What is NOT built yet (don't assume it exists)
 
-- **ACTION REQUIRED — the skill catalog itself won't load until this is done.** `skills`, `subskills`,
-  and `user_subskill_mastery` exist in `supabase/schema.sql` but not yet in the live Supabase
-  project. Two steps, both must happen: (1) re-run `supabase/schema.sql` in the SQL Editor, (2) run
-  `node --env-file=.env.local scripts/seed-skills-to-supabase.mjs` (needs
-  `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`, see `.env.example`) to actually populate the tables
-  from the static catalog. Until both are done, every authenticated page shows a clear "couldn't
-  load the skill catalog" message (not a crash) instead of the real skill tree — see the dated entry
-  above for the full migration writeup.
+- **RESOLVED 2026-08-21.** The catalog now loads live with the full **141 skills / 1,662 subskills /
+  5,150 knowledge points** — `skills`/`subskills` seeded (fixing the Resume Alignment 0% bug), the
+  `knowledge_points` column added via the SQL Editor, then re-seeded. All verified live (paginated
+  count query, plus a direct re-test of `detectSkillLevelsFromText` against the live catalog
+  returning non-zero levels). See entry 11 for the full writeup.
 - **ACTION REQUIRED before skill-slider/Level-graph persistence works**: `user_skill_levels` and
   `user_level_history` exist in `supabase/schema.sql` but not yet in the live Supabase project — the
   user needs to re-run the full schema.sql in their Supabase SQL Editor. Until then, those two data
@@ -608,9 +712,11 @@ resume-to-company compatibility checker.
 - **Custom user-created skills/subskills aren't reachable from the UI yet** — the schema supports
   them (`skills.owner_id`/`subskills` via `skill_id`), but there's no "add a skill" form anywhere.
   RLS is ready for this; the UI isn't.
-- **Subskill depth is thin on most of the 101 skills** — 324 subskills total, average 3.2/skill,
-  against an explicit ~10/skill ask. See the dated entry above for which skills need it most. This
-  is Phase 6 of the CLAIMED/PROVEN/RELEVANT plan (`shimmering-yawning-journal.md`) — not started.
+- **Subskill depth was thin on the original 101 skills; 40 new skills + 1,341 subskills + 5,150
+  knowledge points were merged in from a second reference catalog (entry 11)** — 141 skills, 1,662
+  subskills total now. The ~1,341 newly added/merged subskills have empty `todos` (no "prove it"
+  tasks yet — see `provenSkillLevel`'s fix in entry 11 for why this doesn't dilute Proven scores) and
+  populated `knowledgePoints` instead. Writing real todos for them is separate, deferred work.
 - **Subskill `weight` is now wired** (Phase 1, done) — `provenSkillLevel` in `lib/prep.js` finally
   reads it. Superseded item, kept here only so a future read of this file doesn't wonder why an
   older note said the opposite.
@@ -645,7 +751,7 @@ resume-to-company compatibility checker.
 |---|---|
 | `README.md` | Current architecture — how the code is organized, how to run it. Read this for *what exists*, not *why*. |
 | `COMPANIES.md` | Auto-generated full company database dump. Regenerate via `node scripts/generate-companies-md.mjs`, never hand-edit. |
-| `SKILLS.md` | Hand-audited resume/project skill inventory with proof-of-skill todos, written before the multi-user migration. The app's own in-app subskill/todo catalog (101 skills, `src/data/skills/`) now covers similar ground at broader-but-shallower depth (avg 3.2 subskills/skill vs. this file's deep per-project audit of ~10 skills) — this file remains the more thorough source for the specific 10 resume projects; not a duplicate to be deleted. |
+| `SKILLS.md` | Hand-audited resume/project skill inventory with proof-of-skill todos, written before the multi-user migration. The app's own in-app subskill/todo catalog (141 skills, `src/data/skills/`) now covers similar ground at far broader depth (1,662 subskills, though most of the 1,341 added 2026-08-21 carry knowledge points rather than proof-of-skill todos yet) — this file remains the more thorough source for the specific 10 resume projects; not a duplicate to be deleted. |
 | `Case.md` | Concrete user-journey walkthroughs — what different kinds of users (public visitor, fresh signup, returning hunter, owner) actually see and do. |
 | `System.md` | The leveling/ranking/scoring math — Level, Proven (evidence-based) vs. Self-Assessment (slider), Company Prep readiness, Resume Alignment/Quality/Confidence formulas. |
 | `Use.md` | Feature-by-feature catalog — what each part of the app does and how to use it. |

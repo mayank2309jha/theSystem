@@ -47,7 +47,7 @@ based). Each company's detail page shows:
 - DSA difficulty, plus (if you've set a contest rating on Profile) an estimated Codeforces/CodeChef/
   LeetCode bar and a "clear"/"to go" comparison against your own rating — explicitly labeled an
   estimate derived from the company's existing rank requirement, not a real per-company number.
-- Core CS subjects to prepare, and which of the resume's known projects to lead with.
+- Core CS subjects to prepare.
 - **Company Skill Matrix** — every required skill's Required rank, whether you've **Claimed** it
   (from Resume Raid), your **Proven** rank, and the Gap between them (None/Small/Moderate/Large),
   plus Best Prepared / Least Prepared summaries. Proving a skill here (via its linked skill page)
@@ -62,7 +62,7 @@ based). Each company's detail page shows:
 - A "?" button opens a Methodology panel explaining Proven, readiness, and Resume Alignment.
 
 ### Skill Maxing — `/skills`, `/skill/:id`
-All 101 skills grouped by category (Core CS, Languages, Frontend, Backend, Databases, Distributed
+All 141 skills grouped by category (Core CS, Languages, Frontend, Backend, Databases, Distributed
 Systems, Systems & OS, Cloud & DevOps, Machine Learning, NLP/LLMs, Data Engineering, Applied
 Algorithms, Testing, Security, Specialized, Interview Craft, and more) — things like React, HLD,
 LLD, Node, Postgres. Each skill's rank is **Proven** — a weighted average of checked subskill-todo
