@@ -1,14 +1,28 @@
 import { useEffect, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import ResumeDropzone from "../components/ResumeDropzone";
-import CompanyReadinessTable from "../components/CompanyReadinessTable";
+import ResumeAlignmentTable from "../components/ResumeAlignmentTable";
+import ResumeQualityCard from "../components/ResumeQualityCard";
+import MethodologyButton from "../components/MethodologyButton";
 import { useResume } from "../hooks/useResume";
-import { detectSkillLevelsFromPdfFile, detectSkillLevelsFromPdfUrl } from "../lib/extractResumeSkills";
+import { analyzeResumeFile, analyzeResumeUrl } from "../lib/extractResumeSkills";
 import { companiesRankedByReadiness } from "../lib/prep";
+import { scoreResumeQuality } from "../lib/resumeQuality";
+import { scoreConfidence } from "../lib/confidence";
+
+function confidenceMap(text, skillLevels, ranked) {
+  return Object.fromEntries(
+    ranked.map(({ company }) => [company.id, scoreConfidence({ text, skillLevels, company }).overall])
+  );
+}
 
 export default function Resume() {
+  const { catalog } = useOutletContext();
   const { data: resume, isLoading, upload, uploadStatus, remove, removeStatus, getSignedUrl } = useResume();
   const [uploadError, setUploadError] = useState(null);
   const [ranked, setRanked] = useState(null);
+  const [quality, setQuality] = useState(null);
+  const [confidenceById, setConfidenceById] = useState(null);
   const [scoring, setScoring] = useState(false);
   const [scoreError, setScoreError] = useState(null);
 
@@ -17,8 +31,11 @@ export default function Resume() {
     setScoreError(null);
     try {
       const url = await getSignedUrl();
-      const skillLevels = await detectSkillLevelsFromPdfUrl(url);
-      setRanked(companiesRankedByReadiness(skillLevels));
+      const { text, skillLevels } = await analyzeResumeUrl(url, catalog);
+      const nextRanked = companiesRankedByReadiness(skillLevels);
+      setRanked(nextRanked);
+      setQuality(scoreResumeQuality(text));
+      setConfidenceById(confidenceMap(text, skillLevels, nextRanked));
     } catch {
       setScoreError("Couldn't score your resume — try re-uploading it.");
     } finally {
@@ -40,9 +57,12 @@ export default function Resume() {
     try {
       // Score the freshly-picked file locally first — instant, no round trip —
       // then kick off the actual upload in parallel.
-      const scoringPromise = detectSkillLevelsFromPdfFile(file).then((levels) =>
-        setRanked(companiesRankedByReadiness(levels))
-      );
+      const scoringPromise = analyzeResumeFile(file, catalog).then(({ text, skillLevels }) => {
+        const nextRanked = companiesRankedByReadiness(skillLevels);
+        setRanked(nextRanked);
+        setQuality(scoreResumeQuality(text));
+        setConfidenceById(confidenceMap(text, skillLevels, nextRanked));
+      });
       await Promise.all([upload(file), scoringPromise]);
     } catch {
       setUploadError("Upload failed — check your connection and try again.");
@@ -53,6 +73,8 @@ export default function Resume() {
     if (!confirm("Delete your uploaded resume? This can't be undone.")) return;
     await remove();
     setRanked(null);
+    setQuality(null);
+    setConfidenceById(null);
   }
 
   if (isLoading) {
@@ -65,6 +87,7 @@ export default function Resume() {
 
   return (
     <div className="space-y-6">
+      <MethodologyButton pageKey="resume-alignment" />
       <div className="system-panel p-6">
         <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">My Resume</p>
         <h2 className="font-display text-xl font-bold text-white mb-1">Private, Yours Only</h2>
@@ -106,17 +129,22 @@ export default function Resume() {
         {uploadError && <p className="text-sm text-danger mt-3">{uploadError}</p>}
       </div>
 
+      {resume && quality && !scoring && <ResumeQualityCard quality={quality} />}
+
       {resume && (
         <div className="system-panel p-6">
-          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Your Fit</p>
+          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Resume Alignment</p>
           <h3 className="font-display text-lg font-bold text-white mb-2">All 36 Companies, Ranked</h3>
           <p className="text-xs text-slate-500 mb-4">
-            A rough estimate based on keyword matching against your resume text — a starting point, not a verdict.
+            How well your resume's <strong className="text-slate-400">Claimed</strong> skills (keyword-detected)
+            match each company's requirements — a rough estimate, not a verdict, and not the same as being
+            actually prepared (see Company Prep for that). Confidence reflects how much THE SYSTEM trusts its
+            own number for that company, not how good your resume is.
           </p>
 
           {scoring && <p className="text-sm text-system-blue animate-pulse">Scoring your resume...</p>}
           {scoreError && <p className="text-sm text-danger">{scoreError}</p>}
-          {ranked && !scoring && <CompanyReadinessTable ranked={ranked} />}
+          {ranked && !scoring && <ResumeAlignmentTable ranked={ranked} confidenceByCompanyId={confidenceById} />}
         </div>
       )}
     </div>

@@ -27,12 +27,24 @@ Both engines eventually produce a `{skillId: 0-100}` map, which feeds into
 ```
 importance(requiredRank) = rankIndex(requiredRank) + 1        (E=1 ... S=6)
 progress(skill) = min(yourLevel / requiredProficiencyForRank(requiredSkillRank), 1)
-readiness = Σ(progress × importance) / Σ(importance) × 100
+alignment = Σ(progress × importance) / Σ(importance) × 100
 ```
 
 A company demanding a harder rank on a given skill counts for more in the average; exceeding a
 requirement never over-counts (capped at "fully satisfied"). `companiesRankedByReadiness()` runs
-this across all 36 companies and sorts by score.
+this across all 36 companies and sorts by score. **Terminology note**: this function's *output* is
+called **Resume Alignment** in the UI when fed keyword-detected skills (this doc's subject) —
+never "Readiness," which is reserved for the separate, Proven-evidence-driven Company Prep concept
+documented in `docs/System.md`. The function name itself wasn't changed (it's a generic "score any
+skill-level map against a company" utility reused by both concepts), only what the UI calls the
+result depending on what's fed in.
+
+## Resume Quality and Confidence — two more numbers, not part of this core
+
+Added alongside Alignment (not part of the shared core above): **Resume Quality**
+(`lib/resumeQuality.js`) scores the resume text itself — independent of any company. **Confidence**
+(`lib/confidence.js`) scores how much to trust one Alignment number for one resume+company pair.
+Both heuristic, both disclosed as such. Full formulas in `docs/System.md`.
 
 ## Full detail
 

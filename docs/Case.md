@@ -20,10 +20,14 @@ and the app owner (one specific account). Each sees a meaningfully different app
    PDF only, 5MB max.
 4. `pdf.js` downloads (only now — first time this visitor has triggered any resume-checking code)
    and extracts the raw text from their PDF, entirely in their browser.
-5. That text is matched against ~20 keyword lists (one per skill) and turned into a rough
-   0–100 proficiency estimate per skill.
-6. Every one of the 36 companies gets a readiness score from that estimate, and a full ranked
-   table appears — company, domain, readiness %, base, CTC — sorted best-fit first.
+5. That text is matched against keyword lists (one per skill, covering all 101) and turned into a
+   rough 0–100 proficiency estimate per skill — these are **CLAIMED** skills, not proven ones.
+6. A **Resume Quality** score appears (a heuristic read on the resume text itself — quantified
+   impact, action verbs, section coverage, length, redundancy). Every one of the 36 companies gets
+   a **Resume Alignment** score from the claimed-skill estimate, plus a per-company **Confidence**
+   score (how much to trust that specific Alignment number) — a full ranked table appears: company,
+   domain, alignment %, confidence %, base, CTC — sorted best-fit first. A "?" button explains all
+   three numbers and their limitations.
 7. A second CTA banner appears below the results, same message, same link.
 8. **What never happens:** no Supabase request fires at any point in this entire flow — verifiable
    in the browser's Network tab. Nothing about this visitor or their resume is stored anywhere.
@@ -49,9 +53,11 @@ and the app owner (one specific account). Each sees a meaningfully different app
    - "Nearest Quests (by Placement Day)" — the 6 soonest companies from the real placement
      calendar, same for every user (this part is shared reference data, not personalized).
    - "Where to Focus Next" — up to 6 skills, each showing "Now E-Rank → reach {next rank}: unlocks
-     N more companies." Every skill genuinely starts at E-Rank (10%) on its own proficiency slider
-     — verified live during development that this is true even for the very first render, not just
-     eventually. (This slider is separate from the Level number above — see step 5.)
+     N more companies." This is **Proven** (evidence-based) — every skill genuinely starts at 0%
+     (still E-Rank, the band's floor) since a fresh account has no checked subskill evidence yet —
+     verified live during development that this is true even for the very first render, not just
+     eventually. A separate **Self-Assessment** slider also starts each skill at a cosmetic 10%, but
+     doesn't affect this panel or any other company-facing number — see step 5.
 3. They click around **Company Specific Prep** — full access, 36 companies, searchable/filterable,
    real interview-round writeups where a senior actually reported them (flagged "Unverified prep"
    in a crimson badge otherwise).
@@ -59,12 +65,14 @@ and the app owner (one specific account). Each sees a meaningfully different app
    subjects, important projects to lead with — but **not** a "Which Resume to Send" section. Since
    they're not the owner, that section is replaced with: *"Want to see how your own resume stacks
    up against this company? Try the public Resume Compatibility Checker."*
-5. **Skill Maxing:** all 101 skills grouped by category, each with a slider they can drag as they
-   actually improve (dragging writes to their account immediately — no save button,
-   no round trip) *and* a subskill/todo checklist underneath — e.g. clicking into "React" shows
-   subskills like "React Hooks," "React Router," each with a handful of concrete "prove you can do
-   this" todos. Checking a todo is what actually moves their Level number on Home; dragging the
-   slider only affects that one skill's company-readiness scoring.
+5. **Skill Maxing:** all 101 skills grouped by category, each showing a **Proven** rank driven
+   entirely by a subskill/todo checklist — e.g. clicking into "React" shows subskills like "React
+   Hooks," "React Router," each with a handful of concrete "prove you can do this" todos. Checking a
+   todo is what actually moves both that skill's Proven rank *and* their overall Level number on
+   Home. Each skill also has a **Self-Assessment** slider they can drag (writes to their account
+   immediately — no save button, no round trip) — but dragging it changes nothing else anywhere in
+   the app; it's a personal gut-check, explicitly decoupled from Proven, Company Prep, and Resume
+   Alignment.
 6. They notice **no "Resume Maxing" tab** in the nav at all — it doesn't render for them. Typing
    `/resumes` directly into the URL bar bounces them straight back to Home.
 7. **My Resume** and **Resume Raid** tabs *are* there, though (different from Resume Maxing — see
@@ -73,15 +81,18 @@ and the app owner (one specific account). Each sees a meaningfully different app
 ## Case 3 — Same user, a week later, actively prepping
 
 1. Logs back in — session persists, no re-auth needed unless they explicitly logged out.
-2. Has been dragging skill sliders as they actually study; some are now C/B-Rank.
+2. Has been checking off real subskill-todo evidence as they actually study; some skills' **Proven**
+   rank is now C/B-Rank. (They've also dragged a few Self-Assessment sliders, purely for their own
+   reflection — those never moved any of the numbers below.)
 3. Home's "Where to Focus Next" list has changed — skills they've maxed for every company that
    needs them quietly drop off the list (replaced with "Covers every company" if viewed directly
    on Skill Maxing); new leverage opportunities surface.
 4. Adds a real mission: "Apple — Software Engineer — Online Assessment — Queued." Advances it
    through Queued → In Progress as they go through actual rounds. Marking one "Cleared" awards XP,
-   shown as its own Home stat — this is entirely separate from Level/Hunter Rank now (which come
-   from subskill-todo completion, not job-application progress) and from skill proficiency (which
-   comes from the manual slider). Three independent numbers, three independent meanings.
+   shown as its own Home stat — entirely separate from Level/Hunter Rank (subskill-todo completion,
+   not job-application progress), Proven skill (also subskill-todo completion, per-skill), and
+   Self-Assessment (the manual slider, scoring nothing). Four independent numbers, four independent
+   meanings, never collapsed into one.
 5. Checks off items on a company's Prep Roadmap checklist — properly isolated per account (like
    every other tracked state in the app), even on a shared browser.
 6. Checks off proof-of-skill todos on a couple of skills' subskill checklists — each one nudges
@@ -96,8 +107,8 @@ and the app owner (one specific account). Each sees a meaningfully different app
    (`resumes/{their-user-id}/resume.pdf` in Supabase Storage, tracked in the `user_resumes` table).
 4. Once uploaded, the page shows the filename, size, and upload date, with **Replace** and
    **Delete** actions.
-5. Below that: the same ranked-companies-by-readiness table as `/try`, computed from their actual
-   stored resume.
+5. Below that: a **Resume Quality** score, and the same Resume Alignment table (with per-company
+   Confidence) as `/try`, computed from their actual stored resume.
 6. **Privacy, verified concretely during development:** a second, completely separate test account
    was created and sent to `/resume` — it showed the empty upload state, with zero trace of the
    first account's filename or results anywhere in the page. This isn't a UI-only precaution: the
@@ -116,14 +127,20 @@ and the app owner (one specific account). Each sees a meaningfully different app
 3. The moment the resume list changes, the app automatically scans **every** uploaded resume
    (fetching each via a signed URL, extracting text client-side, keyword-matching — the same engine
    `/try` and `/resume` use) and **unions** the results: if any single resume mentions a skill, it
-   counts as claimed, at the highest confidence level detected across all of them.
+   counts as CLAIMED, at the highest detected level across all of them (`Math.max` per skill — not
+   to be confused with the separate, formally-defined "Confidence" metric used elsewhere).
 4. Results render as a **Claimed Skills** grid grouped by category — every skill their resumes
-   collectively claim, each with a "Claimed" rank pill.
-5. Two actions per skill: **"Test My Strength"** jumps straight to that skill's `/skill/:id` page
+   collectively claim, each with a "Claimed" rank pill *and* a **Proven** rank pill right next to it
+   (from their real subskill-todo evidence) — an "Unverified" tag appears when Proven is still 0.
+5. An **Actual Skill vs. Unverified Claims** bar sits above the grid: of everything claimed, what
+   fraction has at least some Proven evidence (a checked subskill todo)? A fresh account with
+   nothing proven yet reads 0%; checking a single todo on any claimed skill nudges it up
+   immediately, no reload needed.
+6. Two actions per skill: **"Test My Strength"** jumps straight to that skill's `/skill/:id` page
    and its subskill checklist — the explicit point being that a resume bullet isn't proof, checking
-   real todos is. **"Start Tracking"** seeds that skill's proficiency slider to a baseline (35,
-   D-Rank) so it shows up in Skill Maxing and company-readiness scoring going forward.
-6. They can remove any resume from the raid at any time; the claimed-skills list re-scans and
+   real todos is what makes it Proven. **"Start Tracking"** seeds that skill's Self-Assessment
+   slider to a baseline (35, D-Rank) — cosmetic only, it doesn't affect Proven or Company Prep.
+7. They can remove any resume from the raid at any time; the claimed-skills list re-scans and
    updates automatically.
 
 ## Case 5 — The owner account (one specific, DB-flagged account)

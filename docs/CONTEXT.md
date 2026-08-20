@@ -353,6 +353,225 @@ resume-to-company compatibility checker.
    original `id`/`email`/`name`/`created_at`/`updated_at` needs one of these lines or a future
    session will hit this same error class again.
 
+9. **CLAIMED / PROVEN / RELEVANT model (2026-08-20, a later session, in progress).** The user sent a large,
+   detailed spec asking THE SYSTEM to become a transparent, evidence-based placement-intelligence system —
+   distinguishing what a resume CLAIMS, what's actually PROVEN (evidence-based), and what a company finds
+   RELEVANT, never collapsed into one ambiguous number, with a per-page Methodology panel explaining every
+   computed value. The spec explicitly asked for an inspect-then-plan-then-wait workflow (matching
+   `EnterPlanMode`/`ExitPlanMode`), so that's what happened: full repo inspection, a written 6-phase plan
+   (`/Users/mayankjha/.claude/plans/shimmering-yawning-journal.md`), one `AskUserQuestion` on the single
+   consequential fork (see below), explicit approval, then execution. **Phases 1-5 are done and verified as
+   of this entry; only Phase 6 (deep skill-catalogue expansion for the owner's highest-priority skills)
+   remains** — flagged in the plan itself as a large content-authoring effort needing its own dedicated
+   pass, not an architecture task like the rest. See the plan file for its exact scope.
+   - **The one real architectural fork, asked directly rather than assumed**: the manual 0-100 skill slider
+     (`skillLevels`/`useSkillLevels`) used to drive Company Prep readiness, "Where to Focus Next," and every
+     company-facing skill number. The spec's own Company Skill Matrix example shows only
+     Required/Claimed/Proven/Gap — no slider — and explicitly says to prefer evidence-based progression over
+     self-reported percentages. **Confirmed direction: PROVEN (see below) replaces the slider for ALL
+     scoring; the slider stays visible on SkillDetail, relabeled "Self-Assessment," fully decoupled — it no
+     longer feeds anything company-facing anywhere in the app.** If this ever gets touched again, do not
+     quietly restore the slider to any scoring path without re-confirming — this was a deliberate, asked-for
+     product decision, not an oversight.
+   - **PROVEN, finally wiring the long-inert subskill `weight` field**: `provenSkillLevel(skill,
+     subskillTodos)` / `provenSkillLevels(subskillTodos)` in `lib/prep.js` — a weighted average of each
+     subskill's todo-completion fraction, weighted by that subskill's `weight` (1-3, authored back when the
+     101-skill catalog was built, unused until now). A skill with zero subskills scores 0, not undefined —
+     an honest "no evidence mechanism yet" rather than a hidden default. `App.jsx` computes this once
+     (memoized off `subskillTodos`) and threads it through `outletContext` as `provenLevels`, alongside the
+     now-inert-for-scoring `skillLevels`. Every consumer that used to read `skillLevels` for a company-facing
+     number now reads `provenLevels` instead: `CompanyCard.jsx`, `CompanyDetail.jsx`'s
+     `companySkillReadiness`, `Home.jsx`/`SkillMaxing.jsx`'s `skillPriorities`/`nextMilestone`,
+     `SkillDetail.jsx`'s rank badge and milestone messaging. Verified live: dragging the Self-Assessment
+     slider to 80 does NOT move Company Prep numbers; checking subskill todos does.
+   - **Cross-file identifier validator, closing a gap the spec explicitly called out**: `npm run lint` is now
+     `oxlint && node scripts/validate-skill-ids.mjs`. The new script asserts every `companies.js`
+     required-skill id exists in the catalog, every `resumeWeights.js`/`FLAT_WEIGHT_SKILLS` key exists in
+     the catalog, and every catalog skill has a `skillKeywords.js` entry — exactly the class of silent
+     breakage found and fixed earlier this session (23/36 companies). Verified it actually catches a real
+     break: temporarily renamed a required skill id in `companies.js`, confirmed the script printed the
+     mismatch and lint exited non-zero, then reverted and confirmed clean again.
+   - **Resume Alignment, replacing "Readiness" in every resume-facing context** — the spec was specific that
+     "Company Readiness" must never describe resume matching, since it's a different question ("do I have
+     the skill" vs "does this resume claim the skill"). `CompanyReadinessTable.jsx` → renamed
+     `ResumeAlignmentTable.jsx` (only ever used by `Try.jsx`/`Resume.jsx`, confirmed via grep before
+     renaming — safe, no shared usage with the slider-based `CompanyCard.jsx` badge, which correctly keeps
+     "readiness" language since that's the skill-based Company Prep concept the spec says IS fine to keep).
+     The underlying generic function `companiesRankedByReadiness`/`companyReadinessFromSkillLevels` in
+     `lib/prep.js` was NOT renamed — it's a legitimately generic "score any skill-level map against a
+     company" utility, reused for Company Prep (fed Proven), Resume Alignment (fed Claimed/resume-detected),
+     and the non-owner "Resume Fit" panel on `CompanyDetail.jsx` alike; only what it's FED and what the UI
+     CALLS the result changed.
+   - **Resume Quality** (`lib/resumeQuality.js`, new) and **Confidence** (`lib/confidence.js`, new) —
+     genuinely new metrics, not previously present in any form. Both heuristic, client-side, zero backend
+     calls (same philosophy as the rest of the resume-checking pipeline). Quality scores the resume TEXT
+     itself (quantified-impact density, action-verb usage, section coverage, length, low redundancy) —
+     **known, disclosed limitation: pdf.js text extraction doesn't preserve bullet/line boundaries** (a
+     page's text items get flattened into one string), so every signal is density-based (per 100 words),
+     not "fraction of bullets that do X" — documented in the file's own header comment and in the
+     Methodology panel, not hidden. Confidence scores how much the app should trust its OWN Alignment number
+     for one resume+company pair (extraction quality, requirement coverage, whether the company's data is
+     `verified: true/false`) — explicitly NOT a claim about the candidate, and explicitly independent of
+     Alignment (a resume can score 89% Alignment and 54% Confidence at the same time, on purpose).
+     `extractResumeSkills.js` gained `analyzeResumeFile`/`analyzeResumeUrl` (return `{text, skillLevels}`
+     together) alongside the pre-existing `detectSkillLevelsFromPdfFile`/`Url` (skill levels only, kept
+     unchanged so Resume Raid's existing call sites didn't need to change).
+     - Wired into `Try.jsx` and `Resume.jsx` (Quality shown once per resume; Confidence shown per company as
+       an extra table column) and, additively, into `CompanyDetail.jsx`'s "Resume Fit" section for
+       non-owner accounts with their own uploaded resume (three-up: Alignment/Quality/Confidence, live,
+       React-Query-cached per resume so it's not re-parsed on every company page visit) — as well as the
+       owner-only "Which Resume to Send" section, which keeps Engine A's hand-authored `resumeAlignmentScore`
+       for Alignment specifically but gains the same Quality/Confidence framing for consistency. Verified
+       live with a synthetic test PDF: the same resume showed identical Alignment (66%) on both `/try`'s
+       36-company table and `CompanyDetail`'s Apple-specific panel — the shared core function actually is
+       shared, not silently diverged.
+   - **Methodology panel system** — `src/data/methodology.js` (per-page-key content: a short hover string
+     plus structured panel sections), `MethodologyButton.jsx` (fixed bottom-right — deliberately the
+     opposite corner from `ThemeToggle`'s fixed variant, so the two floating buttons never fight for the
+     same corner the way `ThemeToggle` once collided with Layout's Log Out link) + `MethodologyPanel.jsx`
+     (slide-up, closes on backdrop/✕/Escape). Wired onto Home, Company Prep, Company Detail, Skill Maxing,
+     Skill Detail, Resume Raid, My Resume, and `/try`. Content is grounded in the ACTUAL current formulas
+     (written by re-reading the just-built `provenSkillLevel`/`scoreResumeQuality`/`scoreConfidence` source,
+     not from the spec's aspirational description) — if any of those formulas change later, update
+     `methodology.js` in the same change, or the panel starts lying about how the app actually works.
+   - **Resume Raid, Phase 4 — Claimed vs. Proven, done.** Collapsible "What is Resume Raid?" intro block
+     (starts collapsed). The scan/union logic (per-resume keyword detection, `Math.max` union across all
+     raid resumes) was pulled out of `ResumeRaid.jsx` into `src/hooks/useClaimedSkills.js` — needed by
+     `CompanyDetail.jsx`'s Company Skill Matrix too (Phase 5), so it couldn't stay page-local. Each claimed
+     skill now shows a second **Proven** rank pill next to its **Claimed** one (from Phase 1's
+     `provenLevels`), plus an "Unverified" tag when Proven is still 0. New **Actual Skill vs. Unverified
+     Claims** summary bar: `demonstrated = claimed skills where provenLevels[id] > 0` (at least one
+     checked subskill todo — a binary bar, not an arbitrary percentage threshold, matching the spec's own
+     worked example shape), `Actual Skill % = demonstrated / totalClaimed × 100`. Verified live: checking
+     one subskill todo on a claimed skill moved the summary bar from 0% to a nonzero value on next visit
+     to `/resume-raid`, no reload needed (React Query cache + `outletContext`'s `provenLevels` both update
+     reactively).
+   - **Company Skill Matrix, Phase 5 — done.** `src/components/CompanySkillMatrix.jsx`, wired into
+     `CompanyDetail.jsx` as an additive full-width panel between the existing skill-requirement/resume-fit
+     grid and the interview-rounds/prep-roadmap grid (doesn't replace anything). Table: Skill / Required /
+     Claimed (Yes-No, from `useClaimedSkills`) / Proven (rank, from `provenLevels`) / Gap (`None` if
+     Proven meets or exceeds Required, else `Small`/`Moderate`/`Large` scaled by rank-index difference —
+     a judgment-call bucketing, not from the spec, documented as such in the component's own comment).
+     Best/Least Prepared summaries are just this same row set filtered and sorted by margin
+     (`rankIndex(provenRank) - rankIndex(requiredRank)`), not a separate formula. Verified live with a
+     synthetic resume against Apple: `resume-storytelling` (empty keyword list, can't be detected from a
+     PDF by design) correctly showed Claimed=No while `dsa`/`hld`/`microservices` (all mentioned in the
+     synthetic text) showed Claimed=Yes — confirms the matrix reads the real `useClaimedSkills` signal, not
+     a stub. Also confirmed the "proving a skill on a company page feeds back into global Proven" spec
+     requirement needed zero new plumbing — `provenLevels` was already global (Phase 1), the matrix just
+     reads it like everything else does.
+
+10. **Skill catalog → Supabase migration + subskill Mastery tracking (2026-08-21).** Two requests
+    back-to-back: a detailed spec for subskill-level Mastery tracking (0-6 scale, confidence, notes,
+    architecture ready for future quizzes/question banks/spaced repetition), and — via
+    `AskUserQuestion`, not assumed — an explicit, detailed 19-point instruction to migrate the skill
+    catalog itself (`src/data/skills/`) into Supabase as the source of truth. Planned via
+    `EnterPlanMode` (a genuinely large, two-batch undertaking) before any code changed; plan file:
+    `shimmering-yawning-journal.md`. **Two decisions confirmed explicitly, don't relitigate without
+    asking again:** (a) Mastery is NEW and SEPARATE from Proven — Proven (0-100, todo-based) keeps
+    driving Company Prep/Home exactly as before; Mastery is an additive personal-study layer. (b) The
+    catalog migrates to Supabase now, not deferred, with correctness prioritized over speed.
+    - **Schema**: `skills`/`subskills` tables (section 8 of `schema.sql`) — **IDs preserved exactly**
+      from the static catalog (verified via script beforehand: all 101 skill ids and 324 subskill ids
+      are globally unique, safe as Postgres primary keys) specifically because
+      `user_skill_todos.todo_id` already references them for real accounts; regenerating IDs would
+      have silently orphaned existing progress. `owner_id null` = global/system skill (readable by
+      any authenticated user, writable only by the owner account, reusing the exact `profiles.is_owner`
+      RLS pattern already used for the `app-resumes` bucket); `owner_id = some user` = that user's own
+      future custom skill. `todos` stayed a `jsonb` array column on `subskills` rather than becoming
+      its own table — no per-todo state exists beyond the boolean completion already tracked in
+      `user_skill_todos`, so normalizing further wasn't justified yet. `weight` was renamed
+      `importance_weight` (same 1-3 scale, same meaning, matching the new terminology); two more
+      nullable columns (`interview_frequency_weight`, `difficulty_weight`) exist per the spec's
+      "optionally have" but are NOT used in any scoring formula yet. Also added `user_subskill_mastery`
+      (section 9) — the actual Mastery state, RLS-scoped to `auth.uid() = user_id` like every other
+      per-user table. Deliberately did NOT create question-bank/quiz_attempts/notes-search tables —
+      explicitly out of scope per the user's own "make the architecture capable, don't build the full
+      quiz system now."
+    - **A real design tension surfaced and resolved, not glossed over**: `/try` (the public, no-auth
+      resume checker) has a previously explicit, tested, documented invariant — zero Supabase network
+      calls, verified during its own build. `extractResumeSkills.js` (which `/try` uses) imported the
+      static catalog directly; migrating the catalog to Supabase would have silently broken that
+      invariant. **Resolution**: `detectSkillLevelsFromPdfFile`/`detectSkillLevelsFromPdfUrl`/
+      `analyzeResumeFile`/`analyzeResumeUrl` gained an optional `catalog` parameter defaulting to the
+      still-present static import (renamed `staticSkillCatalog` internally for clarity). `Try.jsx`
+      calls them with no catalog argument — completely unchanged behavior, zero Supabase dependency
+      preserved. Every authenticated caller (`Resume.jsx`, `ResumeRaid.jsx` via `useClaimedSkills`,
+      `CompanyDetail.jsx`'s both resume-analysis queries) now passes the Supabase-fetched catalog
+      explicitly. **This is the one deliberate, permanent place the static catalog stays a live read
+      path — not a bug, not leftover cruft. Don't "clean this up" by removing the static import from
+      `extractResumeSkills.js` without re-deriving why `/try` needs it.**
+    - **Data-access layer** (the explicit "components shouldn't care where data comes from" ask):
+      `src/hooks/useSkillCatalog.js` (new) fetches `skills`+`subskills` from Supabase and reshapes
+      them into **exactly** the old static shape (`{id, name, category, why, level, subskills:
+      [{id, name, weight, todos}]}`) — this shape compatibility is what let `lib/prep.js`'s actual
+      math stay untouched. `lib/prep.js` functions that read the catalog (`getSkill`,
+      `provenSkillLevel(s)`, `skillPriorities`, `hunterLevel`) were refactored to accept `catalog` as
+      a parameter instead of importing one — mechanical signature changes, zero logic changes.
+      `App.jsx` fetches the catalog once (`useSkillCatalog()`) and threads it through
+      `outletContext` as `catalog` (+ `catalogLoading`/`catalogError`), alongside `provenLevels` etc.
+      Every component that used to `import { skillCatalog } from "../data/skills"` directly
+      (`SkillMaxing.jsx`, `Home.jsx`, `ResumeRaid.jsx`, `SkillDetail.jsx`, `CompanyDetail.jsx`,
+      `CompanySkillMatrix.jsx`) now reads it off `useOutletContext()` instead — verified via grep
+      that zero stale single-argument calls to the refactored functions remained anywhere.
+      `useSkillLevels.js`'s `defaultSkillLevels` now also derives from the fetched catalog (passed
+      in as a parameter) rather than the static one, and its query is gated on
+      `catalog.length > 0` specifically to avoid a race where it'd compute defaults from an empty
+      catalog before the fetch resolves.
+    - **Graceful degradation, actually verified, not assumed**: the new tables don't exist in the
+      live Supabase project yet (schema.sql changes need the user to re-run it, same as every prior
+      schema change this project has made). Verified live via Playwright that this produces a clean
+      404-then-React-Query-error, not a crash — no page threw. **First pass showed something
+      genuinely confusing though**: Skill Maxing's empty-catalog state rendered as `No skill matches
+      ""` — indistinguishable from "you searched for something and got zero results." Fixed by
+      threading a `catalogError` field through `outletContext` too and giving `SkillMaxing.jsx`/
+      `SkillDetail.jsx` an explicit, actionable error message (re-run schema.sql, then the seed
+      script) instead of a silent empty state. This is exactly the kind of "looks fine until you
+      actually look" gap that's easy to ship if you only check for crashes and not for confusing
+      empty/error states — worth remembering as a general lesson, not just here.
+    - **Seed script** — `scripts/seed-skills-to-supabase.mjs`, idempotent (`upsert` on `id`), reads
+      the static catalog and pushes it into Supabase, then does a post-seed read-back count as a
+      sanity check. Needs the **service role key** (not the anon key — the anon key has no write
+      access to `skills`/`subskills` by RLS design), added to `.env.example` as
+      `SUPABASE_SERVICE_ROLE_KEY` (deliberately NOT `VITE_`-prefixed, so Vite never bundles it into
+      client code). Run via `node --env-file=.env.local scripts/seed-skills-to-supabase.mjs` — Node
+      25's built-in `--env-file` flag, no new `dotenv` dependency needed. **`src/data/skills/` stays
+      in the repo, not deleted** — it's this script's input and `/try`'s permanent read path, not a
+      leftover to clean up.
+    - **`scripts/validate-skill-ids.mjs`/`generate-companies-md.mjs`/`generate-company-md.mjs` were
+      deliberately left unchanged** — they're offline Node scripts with no Supabase credentials at
+      lint/build time; their job is sanity-checking the static seed source before it's ever pushed to
+      Supabase, not validating the live database. Don't try to make lint depend on live DB access.
+    - **Mastery tracking** (`lib/mastery.js`, `hooks/useSubskillMastery.js`, new UI on
+      `SkillDetail.jsx`): `masteryScore(skill, masteryBySubskillId)` mirrors `provenSkillLevel`'s
+      importance-weight-weighted-average shape but on the 0-6 scale, reading `mastery_level` instead
+      of todo-completion — deliberately simple math, `interview_frequency_weight`/`difficulty_weight`
+      exist on the schema but aren't factored in, per the explicit "avoid unnecessarily complicated
+      mathematics" instruction. `weakAreas()` flags subskills below "Interview Ready" (4/6), with
+      `belowTarget`/`highImportance` flags — no quiz-accuracy-based detection (overconfidence
+      flagging, frequently-failed topics) since no quiz data exists yet; that's explicitly future
+      work. UI: an aggregate "Kafka — 3.1/6" panel + Weak Areas callout, and per-subskill
+      mastery_level/confidence_level dropdowns integrated into the existing Subskills checklist
+      (not a separate duplicate list) with notes/interview_notes/mistakes fields collapsed by default
+      behind a "+ Notes" toggle — free-text fields save on blur, not on every keystroke (a real
+      mutation-per-keystroke mistake was caught and fixed before shipping, not after).
+    - **Real bug caught by the linter, not by inspection**: the first version called
+      `useSubskillMastery()` AFTER `SkillDetail.jsx`'s early `return` for a not-yet-loaded/unknown
+      skill — a Rules of Hooks violation (hooks must run in the same order every render). `oxlint`
+      caught it immediately (`react-hooks(rules-of-hooks)`); fixed by moving the hook call before
+      the early returns. Worth remembering: this class of bug is easy to introduce when adding a new
+      hook call to a component that already has early-return guards — always check hook placement
+      relative to existing conditionals when editing, not just adding new code cleanly.
+    - **STILL REQUIRED before any of this works live**: the user must (1) re-run the full
+      `supabase/schema.sql` in their Supabase SQL Editor (adds `skills`/`subskills`/
+      `user_subskill_mastery`), then (2) run
+      `node --env-file=.env.local scripts/seed-skills-to-supabase.mjs` with a real
+      `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` to actually populate the catalog. Neither step can
+      be done by Claude — no tool exists to run SQL or hold service-role credentials in this
+      environment. Until both are done, every authenticated page shows the graceful "couldn't load
+      the skill catalog" message described above, not broken functionality, but also not a working
+      app. This is the single most important unblocking step for anyone picking this up next.
+
 ## Current architecture snapshot (as of this writing)
 
 - **Frontend:** React 19 + Vite 8 + Tailwind v4 + React Router v7, `@tanstack/react-query` for
@@ -368,18 +587,33 @@ resume-to-company compatibility checker.
 
 ## What is NOT built yet (don't assume it exists)
 
+- **ACTION REQUIRED — the skill catalog itself won't load until this is done.** `skills`, `subskills`,
+  and `user_subskill_mastery` exist in `supabase/schema.sql` but not yet in the live Supabase
+  project. Two steps, both must happen: (1) re-run `supabase/schema.sql` in the SQL Editor, (2) run
+  `node --env-file=.env.local scripts/seed-skills-to-supabase.mjs` (needs
+  `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`, see `.env.example`) to actually populate the tables
+  from the static catalog. Until both are done, every authenticated page shows a clear "couldn't
+  load the skill catalog" message (not a crash) instead of the real skill tree — see the dated entry
+  above for the full migration writeup.
 - **ACTION REQUIRED before skill-slider/Level-graph persistence works**: `user_skill_levels` and
   `user_level_history` exist in `supabase/schema.sql` but not yet in the live Supabase project — the
   user needs to re-run the full schema.sql in their Supabase SQL Editor. Until then, those two data
   types silently fall back to local defaults every load (no crash, just no persistence) — see the
   dated entry above. `user_skill_todos`/`user_company_prep`/`missions` already existed and work now.
+- **Mastery tracking (0-6, per subskill) is built but has no content yet** — the UI exists
+  (`SkillDetail.jsx`'s new panel), but no quiz/question banks, quiz-accuracy tracking, overconfidence
+  flagging, or automated spaced-repetition scheduling exist. `next_review`/`last_reviewed`/
+  `revision_count` are columns with nowhere writing them automatically yet — manual only, if a user
+  sets them at all. Explicitly deferred, not an oversight — see the dated entry above.
+- **Custom user-created skills/subskills aren't reachable from the UI yet** — the schema supports
+  them (`skills.owner_id`/`subskills` via `skill_id`), but there's no "add a skill" form anywhere.
+  RLS is ready for this; the UI isn't.
 - **Subskill depth is thin on most of the 101 skills** — 324 subskills total, average 3.2/skill,
-  against an explicit ~10/skill ask. See the dated entry above for which skills need it most.
-- **Subskill `weight` isn't wired to anything yet.** Each subskill carries a `weight` field
-  (mirroring the original Phase C design) but `skillLevels`/company readiness still reads the
-  manually-set slider, not a subskill/todo-derived proficiency. A real "derive skill % from
-  weighted subskill completion" formula (parallel to how `hunterLevel` now derives Level from raw
-  todo-completion count) is still a future step, not done.
+  against an explicit ~10/skill ask. See the dated entry above for which skills need it most. This
+  is Phase 6 of the CLAIMED/PROVEN/RELEVANT plan (`shimmering-yawning-journal.md`) — not started.
+- **Subskill `weight` is now wired** (Phase 1, done) — `provenSkillLevel` in `lib/prep.js` finally
+  reads it. Superseded item, kept here only so a future read of this file doesn't wonder why an
+  older note said the opposite.
 - **Contest ratings are built but need the same schema.sql re-run** — `profiles.contest_platform`/
   `contest_rating` won't exist in the live DB until then; the Profile page shows a clear inline error
   (not a crash) if you try to save before that.
@@ -413,22 +647,46 @@ resume-to-company compatibility checker.
 | `COMPANIES.md` | Auto-generated full company database dump. Regenerate via `node scripts/generate-companies-md.mjs`, never hand-edit. |
 | `SKILLS.md` | Hand-audited resume/project skill inventory with proof-of-skill todos, written before the multi-user migration. The app's own in-app subskill/todo catalog (101 skills, `src/data/skills/`) now covers similar ground at broader-but-shallower depth (avg 3.2 subskills/skill vs. this file's deep per-project audit of ~10 skills) — this file remains the more thorough source for the specific 10 resume projects; not a duplicate to be deleted. |
 | `Case.md` | Concrete user-journey walkthroughs — what different kinds of users (public visitor, fresh signup, returning hunter, owner) actually see and do. |
-| `System.md` | The leveling/ranking/scoring math — hunter rank, skill proficiency bands, company readiness formulas, resume alignment formulas. |
+| `System.md` | The leveling/ranking/scoring math — Level, Proven (evidence-based) vs. Self-Assessment (slider), Company Prep readiness, Resume Alignment/Quality/Confidence formulas. |
 | `Use.md` | Feature-by-feature catalog — what each part of the app does and how to use it. |
-| `ResumetoCompany.md` | Deep dive specifically on the two resume-to-company scoring engines (static weight-table for the 5 app-owned resumes vs. keyword-detection for uploaded resumes) and their formulas/limitations. |
+| `ResumetoCompany.md` | Deep dive specifically on the two resume-to-company scoring engines (static weight-table for the 5 app-owned resumes vs. keyword-detection for uploaded resumes), plus Resume Quality and Confidence, and their formulas/limitations. |
+| `FutureSuggestions.md` | Deferred product/UI backlog — landing-page decluttering, font contrast, and whatever gets appended later. Recording something there is explicitly NOT authorization to build it. |
 
 ## Quick file map (most-likely-to-matter files)
 
 ```
-supabase/schema.sql          canonical DB schema — RLS policies, is_owner column, storage buckets
-src/lib/prep.js              almost all scoring/ranking math lives here
+supabase/schema.sql          canonical DB schema — RLS policies, is_owner column, storage buckets,
+                              skills/subskills/user_subskill_mastery (2026-08-21 migration)
+scripts/seed-skills-to-supabase.mjs   one-time idempotent seed, static catalog -> Supabase (new)
+src/hooks/useSkillCatalog.js the data-access layer — fetches skills/subskills from Supabase,
+                              reshapes into the old static-catalog shape (new)
+src/hooks/useSubskillMastery.js   per-user Mastery state (user_subskill_mastery) (new)
+src/lib/mastery.js            Mastery formulas (masteryScore, weakAreas) — separate from Proven (new)
+src/lib/prep.js              almost all scoring/ranking math — provenSkillLevel(s), company readiness,
+                              resume alignment, skill-unlock curves. Catalog-consuming functions
+                              (getSkill, provenSkillLevel(s), skillPriorities, hunterLevel) take a
+                              `catalog` parameter now instead of importing one directly
 src/lib/ranks.js             E–S rank math (thresholds, bands, gap calculation)
+src/lib/resumeQuality.js     Resume Quality heuristic scorer
+src/lib/confidence.js        Confidence scorer for one resume+company pair
+src/lib/contestRatings.js    DSA contest-rating estimate bands per platform
 src/lib/owner.js             isOwner(profile) — DB-driven, no hardcoded identity
-src/lib/extractResumeSkills.js   pdf.js text extraction (lazy-loaded) + keyword scoring glue
+src/lib/extractResumeSkills.js   pdf.js text extraction (lazy-loaded) + keyword scoring glue;
+                              takes an optional `catalog` param defaulting to the static bundle —
+                              Try.jsx relies on that default to stay zero-Supabase-calls; every
+                              authenticated caller passes the Supabase-fetched catalog explicitly
 src/data/companies.js        36 companies — static, sourced from real placement data, don't invent entries
-src/data/skills.js           thin re-export of src/data/skills/index.js — 101 skills, subskills, proof-of-skill todos
-src/data/skills/             17 category files + index.js — the actual skill catalog content lives here now
+src/data/skills.js           thin re-export of src/data/skills/index.js — NOW the seed source and
+                              Try.jsx's permanent read path, not the app's runtime source of truth
+                              (that's Supabase as of 2026-08-21 — see supabase/schema.sql's header)
+src/data/skills/             17 category files + index.js — content lives here AND in Supabase;
+                              re-run the seed script after editing these to keep them in sync
 src/data/skillKeywords.js    keyword lists the resume checkers match against
-src/App.jsx                  all global state lives in AppRoutes; routes wired here
+src/data/methodology.js      per-page "how this works" content for MethodologyButton/Panel
+scripts/validate-skill-ids.mjs   cross-file skill-id validator, chained into `npm run lint` —
+                              validates the static seed source, not the live DB, on purpose
+src/App.jsx                  all global state lives in AppRoutes; routes wired here; fetches the
+                              skill catalog once (useSkillCatalog) and threads it through
+                              outletContext as `catalog`, alongside provenLevels/skillLevels/etc.
 src/context/AuthProvider.jsx + useAuth.js + AuthContext.js   split across 3 files specifically to satisfy a react-refresh lint rule
 ```

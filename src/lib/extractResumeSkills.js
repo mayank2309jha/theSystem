@@ -1,4 +1,4 @@
-import { skillCatalog } from "../data/skills";
+import { skillCatalog as staticSkillCatalog } from "../data/skills";
 import { detectSkillLevelsFromText } from "../data/skillKeywords";
 
 // pdf.js (1MB+) is dynamically imported here rather than at module top-level
@@ -25,18 +25,43 @@ async function extractTextFromSource(source) {
   return text;
 }
 
+// `catalog` defaults to the static bundled catalog — the deliberate
+// exception in the Supabase catalog migration (2026-08-20, see
+// supabase/schema.sql's header note and docs/CONTEXT.md): Try.jsx (the
+// public, no-auth checker) calls these with no catalog argument specifically
+// to preserve its zero-Supabase-calls guarantee. Authenticated pages
+// (Resume.jsx, ResumeRaid.jsx) pass the Supabase-fetched catalog explicitly
+// via useOutletContext()'s `catalog`, so newly-added skills are detectable
+// there even before /try's bundled snapshot is ever refreshed.
+
 // Entirely client-side — the File never leaves the browser for this path.
-export async function detectSkillLevelsFromPdfFile(file) {
+export async function detectSkillLevelsFromPdfFile(file, catalog = staticSkillCatalog) {
   const arrayBuffer = await file.arrayBuffer();
   const text = await extractTextFromSource({ data: arrayBuffer });
-  return detectSkillLevelsFromText(text, skillCatalog);
+  return detectSkillLevelsFromText(text, catalog);
 }
 
 // For an already-stored resume (the authenticated My Resume page) — pdf.js
 // fetches the signed URL directly instead of us downloading a Blob first.
-export async function detectSkillLevelsFromPdfUrl(url) {
+export async function detectSkillLevelsFromPdfUrl(url, catalog = staticSkillCatalog) {
   const text = await extractTextFromSource({ url });
-  return detectSkillLevelsFromText(text, skillCatalog);
+  return detectSkillLevelsFromText(text, catalog);
+}
+
+// Same extraction, but also returns the raw text — needed by Resume Quality
+// (lib/resumeQuality.js) and Confidence (lib/confidence.js), which analyze
+// the text itself rather than just the detected skill levels. Kept as
+// separate functions from the two above (rather than changing their return
+// shape) so Resume Raid's existing call sites don't have to change.
+export async function analyzeResumeFile(file, catalog = staticSkillCatalog) {
+  const arrayBuffer = await file.arrayBuffer();
+  const text = await extractTextFromSource({ data: arrayBuffer });
+  return { text, skillLevels: detectSkillLevelsFromText(text, catalog) };
+}
+
+export async function analyzeResumeUrl(url, catalog = staticSkillCatalog) {
+  const text = await extractTextFromSource({ url });
+  return { text, skillLevels: detectSkillLevelsFromText(text, catalog) };
 }
 
 export const MAX_RESUME_BYTES = 5 * 1024 * 1024; // 5MB

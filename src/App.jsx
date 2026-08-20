@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./context/AuthProvider";
 import { useProfile } from "./hooks/useProfile";
+import { useSkillCatalog } from "./hooks/useSkillCatalog";
 import { useSkillLevels } from "./hooks/useSkillLevels";
 import { useSkillTodos } from "./hooks/useSkillTodos";
 import { useCompanyPrep } from "./hooks/useCompanyPrep";
@@ -25,7 +26,7 @@ import Resume from "./pages/Resume";
 import ResumeRaid from "./pages/ResumeRaid";
 import Try from "./pages/Try";
 import { DIFFICULTY_XP } from "./data/seed";
-import { hunterLevel } from "./lib/prep";
+import { hunterLevel, provenSkillLevels } from "./lib/prep";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -44,6 +45,15 @@ export default function App() {
 function AppRoutes() {
   const { data: profile } = useProfile();
 
+  // The skill catalog itself — fetched once from Supabase (skills/subskills
+  // tables, migrated 2026-08-20; see supabase/schema.sql) and threaded
+  // through outletContext as `catalog`. This is the "data-access layer": the
+  // functions in lib/prep.js that need it now take it as a parameter instead
+  // of importing a static bundle, so this is the ONE place in the
+  // authenticated app that knows the catalog comes from a network request.
+  // Try.jsx is the deliberate exception — see docs/CONTEXT.md.
+  const { skillCatalog: catalog, isLoading: catalogLoading, error: catalogError } = useSkillCatalog();
+
   // All of this is account-backed (Supabase, RLS-scoped to the caller) —
   // progress follows you across devices/browsers, not just this one
   // browser's localStorage. See docs/CONTEXT.md for the migration history:
@@ -51,7 +61,7 @@ function AppRoutes() {
   // measure; each hook below does a one-time pull of any leftover
   // localStorage data into the account the first time it finds zero rows,
   // so upgrading doesn't discard existing progress.
-  const { skillLevels, setSkillLevel, claimSkills, isLoading: skillLevelsLoading } = useSkillLevels();
+  const { skillLevels, setSkillLevel, claimSkills, isLoading: skillLevelsLoading } = useSkillLevels(catalog);
   const { subskillTodos, toggleSubskillTodo, isLoading: todosLoading } = useSkillTodos();
   const { companyPrepChecked, toggleCompanyPrepItem } = useCompanyPrep();
   const { missions, addMission, setMissionStatus, removeMission } = useMissions();
@@ -72,12 +82,23 @@ function AppRoutes() {
     [missions]
   );
 
-  const level = useMemo(() => hunterLevel(subskillTodos), [subskillTodos]);
+  const level = useMemo(() => hunterLevel(catalog, subskillTodos), [catalog, subskillTodos]);
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const { levelHistory } = useLevelHistory(level, today, !skillLevelsLoading && !todosLoading);
+  const { levelHistory } = useLevelHistory(level, today, !catalogLoading && !skillLevelsLoading && !todosLoading);
+
+  // PROVEN — derived purely from subskill-todo evidence (see lib/prep.js).
+  // This is what Company Prep readiness, "Where to Focus Next", and Resume
+  // Alignment-adjacent scoring read from now. `skillLevels` (the manual
+  // slider) is passed down separately as "Self-Assessment" — a personal
+  // reflection input on SkillDetail only, deliberately not read by any of
+  // the above anymore. See docs/CONTEXT.md for why this changed.
+  const provenLevels = useMemo(() => provenSkillLevels(catalog, subskillTodos), [catalog, subskillTodos]);
 
   const outletContext = {
     playerName: profile?.name ?? "Hunter",
+    catalog,
+    catalogLoading,
+    catalogError,
     xp,
     level,
     levelHistory,
@@ -86,6 +107,7 @@ function AppRoutes() {
     skillLevels,
     setSkillLevel,
     claimSkills,
+    provenLevels,
     subskillTodos,
     toggleSubskillTodo,
     companyPrepChecked,

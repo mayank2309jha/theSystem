@@ -1,9 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/useAuth";
-import { skillCatalog } from "../data/skills";
-
-const defaultSkillLevels = Object.fromEntries(skillCatalog.map((s) => [s.id, s.level]));
 
 function localStorageKey(userId) {
   return `ts-skill-levels-${userId}`;
@@ -26,14 +23,20 @@ function readLegacyLocalStorage(userId) {
 // skill in `user_skill_levels`. Skills with no row yet fall back to the
 // catalog's default seed (10, E-Rank) — same behavior as the old localStorage
 // version, just sourced from the account instead of the browser.
-export function useSkillLevels() {
+//
+// `catalog` comes from useSkillCatalog() (see App.jsx) — this hook waits for
+// it to actually load (`enabled` includes `catalog.length > 0`) so
+// defaultSkillLevels is always computed from the real catalog, never an
+// empty one from a race between the two queries.
+export function useSkillLevels(catalog) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const queryKey = ["skill-levels", user?.id];
+  const defaultSkillLevels = Object.fromEntries(catalog.map((s) => [s.id, s.level]));
+  const queryKey = ["skill-levels", user?.id, catalog.length];
 
   const query = useQuery({
     queryKey,
-    enabled: !!user,
+    enabled: !!user && catalog.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase.from("user_skill_levels").select("skill_id, level").eq("user_id", user.id);
       if (error) throw error;

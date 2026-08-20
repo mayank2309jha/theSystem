@@ -1,19 +1,20 @@
 import { companies } from "../data/companies.js";
-import { skillCatalog } from "../data/skills.js";
 import { resumeSkillWeights, FLAT_WEIGHT_SKILLS, domainBonus } from "../data/resumeWeights.js";
 import { RANK_ORDER, rankGap, rankIndex, skillRankForLevel } from "./ranks.js";
+
+// NOTE: every function below that needs the skill catalog takes it as a
+// parameter (`catalog`) rather than importing one directly — the catalog now
+// lives in Supabase (`skills`/`subskills` tables, migrated 2026-08-20, see
+// supabase/schema.sql), fetched once via useSkillCatalog() and threaded
+// through App.jsx's outletContext. This keeps this file itself agnostic to
+// where the catalog came from (the "data-access layer" the migration asked
+// for) — the one exception is Try.jsx, which still imports the static
+// src/data/skills/ bundle directly to preserve its zero-Supabase-calls
+// guarantee; see docs/CONTEXT.md.
 
 export function getCompany(id) {
   return companies.find((c) => c.id === id);
 }
-
-// Total number of proof-of-skill todos across the entire catalog — the
-// denominator for hunterLevel below. Computed once at module load since
-// skillCatalog is static.
-const TOTAL_TODO_COUNT = skillCatalog.reduce(
-  (sum, skill) => sum + (skill.subskills ?? []).reduce((s, sub) => s + (sub.todos?.length ?? 0), 0),
-  0
-);
 
 // The "power scaling" system: overall progress toward S-Rank divided into
 // 100 discrete levels — Level 1 (the floor; a brand-new account with zero
@@ -26,15 +27,53 @@ const TOTAL_TODO_COUNT = skillCatalog.reduce(
 // E-S rank ladder still applies on top of this exact same number via
 // skillRankForLevel, so "Level 34" and "C-Rank" are two views of one
 // underlying value, not two systems to reconcile.
-export function hunterLevel(subskillTodos) {
-  if (TOTAL_TODO_COUNT === 0) return 1;
+export function hunterLevel(catalog, subskillTodos) {
+  const totalTodoCount = catalog.reduce(
+    (sum, skill) => sum + (skill.subskills ?? []).reduce((s, sub) => s + (sub.todos?.length ?? 0), 0),
+    0
+  );
+  if (totalTodoCount === 0) return 1;
   const checkedCount = Object.keys(subskillTodos).length;
-  const pct = (checkedCount / TOTAL_TODO_COUNT) * 100;
+  const pct = (checkedCount / totalTodoCount) * 100;
   return Math.max(1, Math.min(100, Math.round(pct)));
 }
 
-export function getSkill(id) {
-  return skillCatalog.find((s) => s.id === id);
+export function getSkill(catalog, id) {
+  return catalog.find((s) => s.id === id);
+}
+
+// PROVEN — what a user has actually demonstrated, as opposed to CLAIMED
+// (resume-detected, see detectSkillLevelsFromText) or the self-reported
+// slider (kept on SkillDetail as "Self-Assessment", intentionally NOT read
+// by this function or by anything that computes company-facing readiness).
+//
+// For one skill: a weighted average of its subskills' todo-completion
+// fraction, weighted by each subskill's `weight` (1-3, already authored per
+// subskill, unused anywhere until now). A skill with zero subskills scores
+// 0, not undefined — there's no evidence mechanism for it yet, which is a
+// fact worth surfacing, not hiding behind a default.
+export function provenSkillLevel(skill, subskillTodos) {
+  const subskills = skill.subskills ?? [];
+  if (subskills.length === 0) return 0;
+
+  let weightedSum = 0;
+  let weightTotal = 0;
+  for (const sub of subskills) {
+    const todos = sub.todos ?? [];
+    const weight = sub.weight ?? 1;
+    const doneCount = todos.filter((_, i) => subskillTodos[`${skill.id}:${sub.id}:${i}`]).length;
+    const progress = todos.length === 0 ? 0 : doneCount / todos.length;
+    weightedSum += progress * weight;
+    weightTotal += weight;
+  }
+  return weightTotal === 0 ? 0 : Math.round((weightedSum / weightTotal) * 100);
+}
+
+// Same shape as the manual skillLevels map ({skillId: 0-100}) so it's a
+// drop-in replacement anywhere that map is consumed — companyReadinessFromSkillLevels,
+// skillPriorities, nextMilestone, etc. all work unchanged on either.
+export function provenSkillLevels(catalog, subskillTodos) {
+  return Object.fromEntries(catalog.map((skill) => [skill.id, provenSkillLevel(skill, subskillTodos)]));
 }
 
 // Lower = sooner in the placement season. Untimed/unlisted companies sort last.
@@ -114,8 +153,8 @@ export function nextMilestone(skillId, level) {
 // agnostic on purpose: it doesn't assume any particular target company, it
 // just surfaces where the next bit of effort goes furthest. Skills already
 // maxed out for every company that lists them are excluded.
-export function skillPriorities(levels) {
-  return skillCatalog
+export function skillPriorities(catalog, levels) {
+  return catalog
     .map((skill) => {
       const level = levels[skill.id] ?? skill.level;
       return { skill, level, currentRank: skillRankForLevel(level), milestone: nextMilestone(skill.id, level) };
@@ -124,10 +163,10 @@ export function skillPriorities(levels) {
     .sort((a, b) => b.milestone.newlyUnlockedCount - a.milestone.newlyUnlockedCount);
 }
 
-export function companySkillReadiness(company, levels) {
+export function companySkillReadiness(catalog, company, levels) {
   return company.skills.map((req) => {
-    const level = levels[req.id] ?? getSkill(req.id)?.level ?? 0;
-    return { ...req, skill: getSkill(req.id), level, gap: rankGap(level, req.requiredRank) };
+    const level = levels[req.id] ?? getSkill(catalog, req.id)?.level ?? 0;
+    return { ...req, skill: getSkill(catalog, req.id), level, gap: rankGap(level, req.requiredRank) };
   });
 }
 

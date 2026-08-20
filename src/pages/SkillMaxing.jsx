@@ -1,21 +1,21 @@
 import { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import SkillGapCard from "../components/SkillGapCard";
+import MethodologyButton from "../components/MethodologyButton";
 import { nextMilestone } from "../lib/prep";
 import { skillRankForLevel } from "../lib/ranks";
-import { skillCatalog } from "../data/skills";
 
 export default function SkillMaxing() {
-  const { skillLevels } = useOutletContext();
+  const { catalog, catalogLoading, catalogError, provenLevels } = useOutletContext();
   const [query, setQuery] = useState("");
 
   const overview = useMemo(
     () =>
-      skillCatalog.map((skill) => {
-        const level = skillLevels[skill.id] ?? skill.level;
+      catalog.map((skill) => {
+        const level = provenLevels[skill.id] ?? 0;
         return { skill, level, currentRank: skillRankForLevel(level), milestone: nextMilestone(skill.id, level) };
       }),
-    [skillLevels]
+    [catalog, provenLevels]
   );
 
   const filtered = useMemo(() => {
@@ -40,11 +40,15 @@ export default function SkillMaxing() {
 
   return (
     <div className="system-panel p-6">
+      <MethodologyButton pageKey="skill-maxing" />
       <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Skill Maxing</p>
       <h2 className="font-display text-xl font-bold text-white mb-1">Skill Tree</h2>
       <p className="text-sm text-slate-400 mb-4">
-        Every skill starts at E-Rank. Each card shows the next rank that actually unlocks more companies for
-        that skill — not a fixed target everyone is assumed to need. Click one for the full breakdown and roadmap.
+        Ranks here are <strong className="text-slate-300">Proven</strong> — driven by which subskill todos you've
+        actually checked off, not a self-reported guess. Every skill starts at E-Rank until you check something.
+        Each card shows the next rank that actually unlocks more companies for that skill — not a fixed target
+        everyone is assumed to need. Click one for the full breakdown, evidence checklist, and your own
+        self-assessment.
       </p>
 
       <input
@@ -53,6 +57,16 @@ export default function SkillMaxing() {
         placeholder="Search a skill or subskill (e.g. React, HLD, Kafka, Docker)..."
         className="w-full mb-6 bg-system-void/60 border border-system-border rounded px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-system-blue"
       />
+
+      {catalogLoading && catalog.length === 0 && <p className="text-sm text-slate-500 italic">Loading skill catalog...</p>}
+
+      {catalogError && catalog.length === 0 && (
+        <p className="text-sm text-danger border border-danger/40 bg-danger/10 rounded px-3 py-2">
+          Couldn't load the skill catalog — the <code>skills</code>/<code>subskills</code> tables may not exist in
+          Supabase yet. Re-run <code>supabase/schema.sql</code>, then run{" "}
+          <code>node --env-file=.env.local scripts/seed-skills-to-supabase.mjs</code> to populate them.
+        </p>
+      )}
 
       <div className="space-y-8">
         {Object.entries(byCategory).map(([category, items]) => (
@@ -65,7 +79,9 @@ export default function SkillMaxing() {
             </div>
           </div>
         ))}
-        {filtered.length === 0 && <p className="text-sm text-slate-500 italic">No skill matches "{query}".</p>}
+        {filtered.length === 0 && !catalogLoading && !catalogError && (
+          <p className="text-sm text-slate-500 italic">No skill matches "{query}".</p>
+        )}
       </div>
     </div>
   );

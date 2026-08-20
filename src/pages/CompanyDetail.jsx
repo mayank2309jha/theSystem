@@ -1,19 +1,49 @@
 import { Link, useParams, useOutletContext } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import RankPill from "../components/RankPill";
 import OpenResumeButton from "../components/OpenResumeButton";
+import MethodologyButton from "../components/MethodologyButton";
+import CompanySkillMatrix from "../components/CompanySkillMatrix";
+import { useClaimedSkills } from "../hooks/useClaimedSkills";
 import { skillRankForLevel } from "../lib/ranks";
-import { getCompany, companySkillReadiness, formatINR, resumeAlignmentScore } from "../lib/prep";
+import { getCompany, companySkillReadiness, companyReadinessFromSkillLevels, formatINR, resumeAlignmentScore } from "../lib/prep";
 import { resumeInfo, RESUME_SLUG } from "../data/resumes";
 import { useProfile } from "../hooks/useProfile";
+import { useResume } from "../hooks/useResume";
 import { isOwner } from "../lib/owner";
 import { CONTEST_PLATFORMS, requiredRatingForRank, ratingGap } from "../lib/contestRatings";
+import { analyzeResumeUrl } from "../lib/extractResumeSkills";
+import { getAppResumeSignedUrl } from "../lib/appResumes";
+import { scoreResumeQuality } from "../lib/resumeQuality";
+import { scoreConfidence } from "../lib/confidence";
 
 export default function CompanyDetail() {
   const { id } = useParams();
-  const { skillLevels, companyPrepChecked, toggleCompanyPrepItem } = useOutletContext();
+  const { catalog, provenLevels, companyPrepChecked, toggleCompanyPrepItem } = useOutletContext();
   const { data: profile } = useProfile();
+  const { data: myResume, getSignedUrl: getMySignedUrl } = useResume();
+  const { claimed } = useClaimedSkills(catalog);
   const company = getCompany(id);
   const checked = companyPrepChecked[id] ?? [];
+  const owner = isOwner(profile);
+
+  // Own-resume Resume Alignment/Quality/Confidence for this specific
+  // company — additive to the existing Proven-based "Skill Requirement"
+  // list above, and to the owner-only static-resume section below. Two
+  // independent queries (one per audience) so neither fires for the other.
+  const nonOwnerAnalysis = useQuery({
+    queryKey: ["resume-analysis", myResume?.storage_path],
+    enabled: !owner && !!myResume,
+    queryFn: async () => analyzeResumeUrl(await getMySignedUrl(), catalog),
+    staleTime: Infinity,
+  });
+
+  const ownerAnalysis = useQuery({
+    queryKey: ["app-resume-analysis", company?.resume],
+    enabled: owner && !!company,
+    queryFn: async () => analyzeResumeUrl(await getAppResumeSignedUrl(company.resume), catalog),
+    staleTime: Infinity,
+  });
 
   if (!company) {
     return (
@@ -24,9 +54,24 @@ export default function CompanyDetail() {
     );
   }
 
-  const readiness = companySkillReadiness(company, skillLevels);
+  const readiness = companySkillReadiness(catalog, company, provenLevels);
   const resume = resumeInfo[company.resume];
   const alignmentScore = resumeAlignmentScore(company.resume, company);
+
+  const nonOwnerMetrics = nonOwnerAnalysis.data
+    ? {
+        alignment: companyReadinessFromSkillLevels(company, nonOwnerAnalysis.data.skillLevels),
+        quality: scoreResumeQuality(nonOwnerAnalysis.data.text),
+        confidence: scoreConfidence({ text: nonOwnerAnalysis.data.text, skillLevels: nonOwnerAnalysis.data.skillLevels, company }),
+      }
+    : null;
+
+  const ownerMetrics = ownerAnalysis.data
+    ? {
+        quality: scoreResumeQuality(ownerAnalysis.data.text),
+        confidence: scoreConfidence({ text: ownerAnalysis.data.text, skillLevels: ownerAnalysis.data.skillLevels, company }),
+      }
+    : null;
 
   function toggle(i) {
     toggleCompanyPrepItem(id, i);
@@ -34,6 +79,7 @@ export default function CompanyDetail() {
 
   return (
     <div className="space-y-6">
+      <MethodologyButton pageKey="company-prep" />
       <Link to="/companies" className="text-system-blue text-xs font-display uppercase tracking-widest hover:underline">
         ← Back to Company Specific Prep
       </Link>
@@ -64,7 +110,11 @@ export default function CompanyDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="system-panel p-6">
-          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-3">Skill Requirement</p>
+          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Skill Requirement</p>
+          <p className="text-[11px] text-slate-500 mb-3">
+            Your rank here is <strong className="text-slate-400">Proven</strong> — from checked subskill evidence,
+            not self-assessment. Click a skill to add evidence; it updates everywhere, not just here.
+          </p>
           <div className="space-y-2.5">
             {readiness.map((r) => {
               const currentRank = skillRankForLevel(r.level);
@@ -125,7 +175,7 @@ export default function CompanyDetail() {
             ))}
           </ul>
 
-          {isOwner(profile) ? (
+          {owner ? (
             <>
               <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-2">Which Resume to Send</p>
               <div className="border border-system-blue/40 bg-system-blue/5 rounded p-3">
@@ -139,22 +189,66 @@ export default function CompanyDetail() {
                   />
                 </div>
                 <p className="text-xs text-slate-400 mb-1.5">{resume.focus}</p>
-                <p className="text-xs text-slate-500 italic">{company.resumeReason}</p>
+                <p className="text-xs text-slate-500 italic mb-2">{company.resumeReason}</p>
+                <p className="text-[10px] text-slate-500">
+                  Alignment above is Engine A (hand-authored per-resume weights, see docs/ResumetoCompany.md).
+                  {ownerMetrics && (
+                    <>
+                      {" "}
+                      Quality: <span className="text-slate-300">{ownerMetrics.quality.overall}/100</span> · Confidence:{" "}
+                      <span className="text-slate-300">{ownerMetrics.confidence.overall}%</span>.
+                    </>
+                  )}
+                </p>
               </div>
             </>
           ) : (
             <>
-              <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-2">Resume Fit</p>
-              <div className="border border-system-border bg-system-void/30 rounded p-3">
-                <p className="text-xs text-slate-400">
-                  Want to see how <em>your own</em> resume stacks up against this company? Try the public Resume
-                  Compatibility Checker — no account needed, nothing stored.
-                </p>
-              </div>
+              <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-2" title="How closely does this resume match what this company looks for?">
+                Resume Fit
+              </p>
+              {nonOwnerMetrics ? (
+                <div className="border border-system-blue/40 bg-system-blue/5 rounded p-3 space-y-2">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className="font-display text-lg font-bold text-system-blue">{nonOwnerMetrics.alignment}%</p>
+                      <p className="text-[9px] uppercase tracking-wide text-slate-500">Alignment</p>
+                    </div>
+                    <div>
+                      <p className="font-display text-lg font-bold text-slate-200">{nonOwnerMetrics.quality.overall}</p>
+                      <p className="text-[9px] uppercase tracking-wide text-slate-500">Quality /100</p>
+                    </div>
+                    <div>
+                      <p className="font-display text-lg font-bold text-slate-200">{nonOwnerMetrics.confidence.overall}%</p>
+                      <p className="text-[9px] uppercase tracking-wide text-slate-500">Confidence</p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    From your uploaded resume's <strong className="text-slate-400">Claimed</strong> skills against
+                    this company — not the same as being actually prepared. See{" "}
+                    <Link to="/resume" className="text-system-blue hover:underline">My Resume</Link> for the full
+                    36-company view.
+                  </p>
+                </div>
+              ) : myResume ? (
+                <div className="border border-system-border bg-system-void/30 rounded p-3">
+                  <p className="text-xs text-slate-400">Scoring your resume against {company.name}...</p>
+                </div>
+              ) : (
+                <div className="border border-system-border bg-system-void/30 rounded p-3">
+                  <p className="text-xs text-slate-400">
+                    Upload a resume on <Link to="/resume" className="text-system-blue hover:underline">My Resume</Link> to
+                    see how it stacks up here, or try the public Resume Compatibility Checker — no account needed,
+                    nothing stored.
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>
       </div>
+
+      <CompanySkillMatrix catalog={catalog} company={company} claimed={claimed} provenLevels={provenLevels} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="system-panel p-6">

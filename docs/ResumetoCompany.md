@@ -5,6 +5,13 @@ fit this company," built for two different situations. They share one piece of c
 differ completely in how they arrive at the input to that math. Conflating them is the easiest way
 to misunderstand this system, so this document keeps them clearly apart.
 
+Both engines are called **Resume Alignment** in the UI as of the CLAIMED/PROVEN/RELEVANT redesign
+(2026-08-20) — never "Readiness." "Readiness" is reserved for the separate, skill-based, Proven-
+evidence-driven Company Prep concept (see `docs/System.md`); Resume Alignment answers a different
+question ("does my resume claim the skill") and is deliberately never called Readiness anywhere in
+the UI, per explicit spec. Two more numbers, Resume Quality and Confidence, ship alongside
+Alignment wherever Engine B runs — see the bottom of this file.
+
 ## Engine A — Static weight tables (5 app-owned resumes, owner-only)
 
 **Where:** `resumeAlignmentScore()` and `companiesRankedForResume()` in `src/lib/prep.js`, backed
@@ -56,12 +63,19 @@ cost of not generalizing to any other resume — which is exactly why Engine B e
 ## Engine B — Keyword detection (any uploaded resume, public + authenticated)
 
 **Where:** `src/lib/extractResumeSkills.js` (extraction) + `src/data/skillKeywords.js` (matching)
-feeding into the **same** `companyReadinessFromSkillLevels()` used for skill-based company
-readiness elsewhere in the app (see `docs/System.md`). Powers `/try` (public, no auth), `/resume`
-(authenticated, private, persisted), and **Resume Raid** (`/resume-raid`) — which runs this same
-extraction across *every* resume a user uploads and unions the per-skill results via `Math.max`,
-surfacing every skill claimed by at least one of their resumes rather than scoring one document
-against companies.
+feeding into the **same** `companyReadinessFromSkillLevels()` used for skill-based Company Prep
+readiness elsewhere in the app (see `docs/System.md`) — the UI calls the result "Resume Alignment"
+here, "Readiness" there; same underlying function, different input and different label, on purpose.
+Powers `/try` (public, no auth), `/resume` (authenticated, private, persisted), and **Resume Raid**
+(`/resume-raid`) — which runs this same extraction across *every* resume a user uploads and unions
+the per-skill results via `Math.max`, surfacing every skill CLAIMED by at least one of their resumes
+rather than scoring one document against companies (see `docs/CONTEXT.md` — Resume Raid's full
+CLAIMED/PROVEN split is planned but not yet built as of this writing).
+
+Every skill this engine detects is **CLAIMED**, not **PROVEN** — a resume mentioning Kafka doesn't
+mean Kafka is Proven; Proven only comes from checked subskill-todo evidence on Skill Maxing (see
+`docs/System.md`'s "Proven skill" section). Nowhere in the app should a Resume Alignment number be
+read as "the user actually knows this."
 
 This engine has to work on a document it's never seen before, from a stranger, with no time to
 hand-author anything. The whole pipeline runs **client-side**:
@@ -70,7 +84,11 @@ hand-author anything. The whole pipeline runs **client-side**:
    weight only loads for someone who actually uses a resume-checking feature) reads the PDF's raw
    text, page by page, entirely in the browser. For an uploaded `File` object
    (`detectSkillLevelsFromPdfFile`), or for an already-stored resume fetched via a signed URL
-   (`detectSkillLevelsFromPdfUrl`) on the authenticated My Resume and Resume Raid pages.
+   (`detectSkillLevelsFromPdfUrl`) on the authenticated My Resume and Resume Raid pages. Two sibling
+   functions, `analyzeResumeFile`/`analyzeResumeUrl`, do the identical extraction but also return
+   the raw text alongside the detected levels — added for Resume Quality/Confidence (below), which
+   need the text itself, not just the detected skills. The original two functions were kept
+   unchanged so Resume Raid's existing call sites didn't need to change.
 2. **Keyword matching** — `detectSkillLevelsFromText()` lowercases the extracted text and, for
    each of the 101 skills in the catalog, counts how many **distinct** keywords from that skill's
    list (`skillKeywords.js`) appear anywhere in the text. Counting distinct keywords rather than raw
@@ -109,9 +127,29 @@ Both `/try` and `/resume` show this disclaimer directly above the results table 
 product honesty, not fine print, and shouldn't be removed or softened without reconsidering why it
 was added.
 
+## Resume Quality and Confidence — two more numbers alongside Alignment
+
+Added in the same CLAIMED/PROVEN/RELEVANT redesign that renamed Engine B's output to Resume
+Alignment. Both are computed from the SAME extracted text Engine B already produces (via
+`analyzeResumeFile`/`analyzeResumeUrl` above) — no extra parsing pass.
+
+- **Resume Quality** (`lib/resumeQuality.js`, `scoreResumeQuality(text)`) — a property of the
+  resume ITSELF, independent of any one company. Quantified-impact density, action-verb usage,
+  section coverage, length, low redundancy, combined into one 0–100 score with the sub-scores
+  shown too. Full formula in `docs/System.md`.
+- **Confidence** (`lib/confidence.js`, `scoreConfidence({ text, skillLevels, company })`) — how
+  much THE SYSTEM trusts its OWN Alignment number for one specific resume+company pair, not a
+  claim about the candidate. A high Alignment score does not imply high Confidence — they're
+  independent by design. Full formula in `docs/System.md`.
+
+Both are heuristic, client-side, zero-backend — same philosophy as Engine B itself. Shown on
+`/try`, `/resume` (Quality once per resume; Confidence per company as a table column), and on
+`CompanyDetail`'s "Resume Fit" panel (three-up, for both non-owner accounts' own resumes and,
+alongside Engine A's Alignment, for the owner's static resumes).
+
 ## Side-by-side
 
-| | Engine A (Resume Maxing) | Engine B (Resume Checkers) |
+| | Engine A (Resume Maxing) | Engine B (Resume Alignment / Quality / Confidence) |
 |---|---|---|
 | Input | 5 known, hand-read PDFs | Any uploaded PDF, never seen before |
 | Skill weights | Manually authored per resume | Auto-detected via keyword count |
@@ -119,6 +157,7 @@ was added.
 | Audience | Owner account only | Anyone — public and authenticated |
 | Where content lives | `resumeWeights.js` (static) | Extracted live from the uploaded file, never stored as text |
 | Shared math | `companyReadinessFromSkillLevels`-style importance weighting (own implementation: `resumeAlignmentScore`) | `companyReadinessFromSkillLevels` directly |
+| Quality / Confidence | Owner's section shows both too (same functions, fed the owner's static-resume text) | Native — computed from the same extraction pass |
 
 ## If detection quality ever needs improving
 

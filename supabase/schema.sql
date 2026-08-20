@@ -5,9 +5,16 @@
 -- It is idempotent-ish (uses IF NOT EXISTS / OR REPLACE / drop-then-create
 -- for policies) so re-running it after a partial failure is safe.
 --
--- Everything here is USER-OWNED data only. Companies, skills, subskills,
--- todos, and the 5 app-owned resumes are static application data compiled
--- into the frontend (src/data/*.js) — they do NOT live in this database.
+-- Most of this is USER-OWNED data. Companies and the 5 app-owned resumes stay
+-- static application data compiled into the frontend (src/data/companies.js) —
+-- they do NOT live in this database. The skill catalog (`skills`/`subskills`,
+-- section 8 below) is the one exception: as of 2026-08-20 it migrated from a
+-- static src/data/skills/ bundle into this database, specifically so skills
+-- can be added/edited without a frontend code change. src/data/skills/ still
+-- exists in the repo as the seed source (`scripts/seed-skills-to-supabase.mjs`)
+-- and as the one deliberate exception to "DB is authoritative": the public
+-- /try page still reads it directly, by design, to preserve its zero-Supabase-
+-- calls guarantee — see docs/CONTEXT.md for the full reasoning.
 
 -- ============================================================================
 -- 1. profiles — one row per authenticated user
@@ -301,12 +308,126 @@ create policy "app_resumes_select_owner_only" on storage.objects
   );
 
 -- ============================================================================
+-- 8. skills / subskills — the skill catalog itself, now DB-authoritative.
+--    Migrated from src/data/skills/ (2026-08-20) — see the note at the top of
+--    this file. IDs are preserved EXACTLY from the static catalog (e.g. skill
+--    id "dsa", subskill id "dsa-arrays") because user_skill_todos.todo_id
+--    ("{skillId}:{subskillId}:{todoIndex}") already references them for real
+--    accounts — regenerating these would silently orphan existing progress.
+--    `owner_id null` = a global/system skill, visible to everyone, editable
+--    only by the owner account (same pattern as the app-resumes bucket
+--    below). `owner_id = some user` = that user's own custom skill, visible
+--    and editable only by them — the future "user-created skills" path.
+-- ============================================================================
+
+create table if not exists public.skills (
+  id                       text primary key,
+  name                     text not null,
+  category                 text not null,
+  why                      text,
+  description              text,
+  default_self_assessment  smallint not null default 10 check (default_self_assessment between 0 and 100),
+  preparedness_target      smallint check (preparedness_target between 0 and 6),
+  owner_id                 uuid references auth.users(id) on delete cascade,
+  is_archived              boolean not null default false,
+  created_at               timestamptz not null default now(),
+  updated_at               timestamptz not null default now()
+);
+
+create table if not exists public.subskills (
+  id                          text primary key,
+  skill_id                    text not null references public.skills(id) on delete cascade,
+  name                        text not null,
+  importance_weight           smallint not null default 1,
+  interview_frequency_weight  smallint,
+  difficulty_weight           smallint,
+  todos                       jsonb not null default '[]'::jsonb,
+  is_archived                 boolean not null default false,
+  created_at                  timestamptz not null default now(),
+  updated_at                  timestamptz not null default now()
+);
+
+create index if not exists subskills_skill_id_idx on public.subskills(skill_id);
+
+alter table public.skills enable row level security;
+alter table public.subskills enable row level security;
+
+drop policy if exists "skills_select" on public.skills;
+create policy "skills_select" on public.skills
+  for select using (auth.uid() is not null and (owner_id is null or owner_id = auth.uid()));
+
+drop policy if exists "skills_write" on public.skills;
+create policy "skills_write" on public.skills
+  for all
+  using (owner_id = auth.uid() or (owner_id is null and exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_owner)))
+  with check (owner_id = auth.uid() or (owner_id is null and exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_owner)));
+
+drop policy if exists "subskills_select" on public.subskills;
+create policy "subskills_select" on public.subskills
+  for select using (
+    exists (
+      select 1 from public.skills s
+      where s.id = subskills.skill_id and auth.uid() is not null and (s.owner_id is null or s.owner_id = auth.uid())
+    )
+  );
+
+drop policy if exists "subskills_write" on public.subskills;
+create policy "subskills_write" on public.subskills
+  for all
+  using (
+    exists (
+      select 1 from public.skills s where s.id = subskills.skill_id
+      and (s.owner_id = auth.uid() or (s.owner_id is null and exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_owner)))
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.skills s where s.id = subskills.skill_id
+      and (s.owner_id = auth.uid() or (s.owner_id is null and exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_owner)))
+    )
+  );
+
+-- ============================================================================
+-- 9. user_subskill_mastery — per-user, per-subskill mastery tracking.
+--    A NEW, SEPARATE signal from user_skill_todos' Proven system (0-100,
+--    todo-completion-based, drives Company Prep/Home) — this is the 0-6
+--    Mastery scale (Not Started..Advanced) plus confidence/notes/review
+--    scheduling, an additive personal-study layer. See docs/System.md.
+--    Deliberately does NOT yet include quiz/question-bank fields — those
+--    belong to future tables (questions, quiz_attempts) referencing
+--    subskill_id, not this per-user state row. See docs/CONTEXT.md.
+-- ============================================================================
+
+create table if not exists public.user_subskill_mastery (
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  subskill_id      text not null references public.subskills(id) on delete cascade,
+  mastery_level    smallint not null default 0 check (mastery_level between 0 and 6),
+  confidence_level smallint check (confidence_level between 0 and 6),
+  learning_status  text not null default 'not_started',
+  notes            text,
+  interview_notes  text,
+  mistakes         text,
+  last_reviewed    date,
+  next_review      date,
+  revision_count   int not null default 0,
+  updated_at       timestamptz not null default now(),
+  primary key (user_id, subskill_id)
+);
+
+alter table public.user_subskill_mastery enable row level security;
+
+drop policy if exists "user_subskill_mastery_all_own" on public.user_subskill_mastery;
+create policy "user_subskill_mastery_all_own" on public.user_subskill_mastery
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ============================================================================
 -- Done. Sanity check: every table below should show rowsecurity = true.
 -- ============================================================================
 -- select tablename, rowsecurity from pg_tables
 --   where schemaname = 'public'
 --   and tablename in ('profiles','user_skill_todos','user_skill_levels','user_company_prep',
---                      'missions','user_resumes','user_raid_resumes','user_level_history');
+--                      'missions','user_resumes','user_raid_resumes','user_level_history',
+--                      'skills','subskills','user_subskill_mastery');
 
 -- ============================================================================
 -- ONE-TIME MANUAL STEP — run this yourself, separately, after signing up

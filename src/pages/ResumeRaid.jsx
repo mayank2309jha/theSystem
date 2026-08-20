@@ -1,54 +1,17 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import ResumeDropzone from "../components/ResumeDropzone";
 import RankPill from "../components/RankPill";
-import { useRaidResumes } from "../hooks/useRaidResumes";
-import { detectSkillLevelsFromPdfUrl } from "../lib/extractResumeSkills";
+import MethodologyButton from "../components/MethodologyButton";
+import { useClaimedSkills } from "../hooks/useClaimedSkills";
 import { skillRankForLevel } from "../lib/ranks";
-import { skillCatalog } from "../data/skills";
 
 export default function ResumeRaid() {
-  const { claimSkills } = useOutletContext();
-  const { data: resumes, isLoading, upload, uploadStatus, remove, getSignedUrl } = useRaidResumes();
+  const { catalog, claimSkills, provenLevels } = useOutletContext();
+  const { resumes, resumesLoading, upload, uploadStatus, remove, claimed, scanning, scanError } = useClaimedSkills(catalog);
   const [uploadError, setUploadError] = useState(null);
-  const [claimed, setClaimed] = useState(null); // { skillId: level } union across all resumes
-  const [scanning, setScanning] = useState(false);
-  const [scanError, setScanError] = useState(null);
   const [justClaimed, setJustClaimed] = useState({});
-
-  async function scanAll() {
-    if (!resumes || resumes.length === 0) {
-      setClaimed({});
-      return;
-    }
-    setScanning(true);
-    setScanError(null);
-    try {
-      const perResume = await Promise.all(
-        resumes.map(async (r) => {
-          const url = await getSignedUrl(r);
-          return detectSkillLevelsFromPdfUrl(url);
-        })
-      );
-      const union = {};
-      for (const levels of perResume) {
-        for (const [skillId, level] of Object.entries(levels)) {
-          union[skillId] = Math.max(union[skillId] ?? 0, level);
-        }
-      }
-      setClaimed(union);
-    } catch {
-      setScanError("Couldn't scan one or more resumes — try re-uploading it.");
-    } finally {
-      setScanning(false);
-    }
-  }
-
-  useEffect(() => {
-    if (resumes && resumes.length > 0) scanAll();
-    if (resumes && resumes.length === 0) setClaimed({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumes?.length]);
+  const [introOpen, setIntroOpen] = useState(false);
 
   async function handleFile(file) {
     setUploadError(null);
@@ -70,11 +33,24 @@ export default function ResumeRaid() {
   }
 
   const claimedEntries = claimed
-    ? skillCatalog
+    ? catalog
         .filter((s) => claimed[s.id] > 0)
-        .map((s) => ({ skill: s, detectedLevel: claimed[s.id], detectedRank: skillRankForLevel(claimed[s.id]) }))
+        .map((s) => ({
+          skill: s,
+          detectedLevel: claimed[s.id],
+          detectedRank: skillRankForLevel(claimed[s.id]),
+          proven: provenLevels[s.id] ?? 0,
+          provenRank: skillRankForLevel(provenLevels[s.id] ?? 0),
+        }))
         .sort((a, b) => b.detectedLevel - a.detectedLevel)
     : [];
+
+  // Actual Skill vs. Unverified Claims — of everything claimed, how much has
+  // at least SOME Proven evidence (>0, i.e. at least one subskill todo
+  // checked)? A binary "demonstrated or not" bar, not an arbitrary
+  // percentage threshold — see the Methodology panel for why.
+  const demonstratedCount = claimedEntries.filter((e) => e.proven > 0).length;
+  const actualSkillPct = claimedEntries.length === 0 ? 0 : Math.round((demonstratedCount / claimedEntries.length) * 100);
 
   const byCategory = {};
   for (const entry of claimedEntries) {
@@ -84,9 +60,25 @@ export default function ResumeRaid() {
 
   return (
     <div className="space-y-6">
+      <MethodologyButton pageKey="resume-raid" />
       <div className="system-panel p-6">
         <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Resume Raid</p>
         <h2 className="font-display text-xl font-bold text-white mb-1">Every Skill You've Claimed, On Paper</h2>
+
+        <button
+          onClick={() => setIntroOpen((o) => !o)}
+          className="text-xs text-system-blue hover:underline mb-2"
+        >
+          {introOpen ? "▾ Hide" : "▸ What is Resume Raid?"}
+        </button>
+        {introOpen && (
+          <div className="text-xs text-slate-400 leading-relaxed border-l-2 border-system-blue/40 pl-3 mb-4 space-y-1.5">
+            <p>Resume Raid tells you what your resumes claim you are — it is resume-based interview preparation, not primarily a company-preparation tool.</p>
+            <p>It analyzes every resume you upload, extracts mentioned skills/technologies/frameworks/tools, and maps them onto the skill catalogue (subskills included where detectable).</p>
+            <p>Everything found becomes <strong className="text-slate-300">CLAIMED</strong> — not <strong className="text-slate-300">PROVEN</strong>. It helps you test whether you actually know what you claim, by linking straight into each skill's proof-of-skill checklist.</p>
+          </div>
+        )}
+
         <p className="text-sm text-slate-400 mb-4">
           Upload every resume you have — different variants, old drafts, all of them. This scans every project,
           course, and technology mentioned across all of them and builds one combined list: every skill you've
@@ -100,7 +92,7 @@ export default function ResumeRaid() {
         {uploadStatus === "pending" && <p className="text-sm text-system-blue mt-3 animate-pulse">Uploading...</p>}
         {uploadError && <p className="text-sm text-danger mt-3">{uploadError}</p>}
 
-        {!isLoading && resumes && resumes.length > 0 && (
+        {!resumesLoading && resumes && resumes.length > 0 && (
           <div className="mt-4 space-y-2">
             {resumes.map((r) => (
               <div key={r.id} className="flex items-center justify-between border border-system-border bg-system-void/30 rounded px-3 py-2">
@@ -120,6 +112,27 @@ export default function ResumeRaid() {
         )}
       </div>
 
+      {resumes && resumes.length > 0 && claimedEntries.length > 0 && (
+        <div className="system-panel p-6">
+          <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Actual Skill vs. Unverified Claims</p>
+          <div className="flex items-center gap-4 mb-2">
+            <div className="flex-1">
+              <div className="h-2.5 w-full bg-system-void rounded-full overflow-hidden border border-system-border flex">
+                <div className="h-full bg-rank-d" style={{ width: `${actualSkillPct}%` }} />
+                <div className="h-full bg-danger/50" style={{ width: `${100 - actualSkillPct}%` }} />
+              </div>
+            </div>
+            <span className="font-display text-lg font-bold text-rank-d whitespace-nowrap">{actualSkillPct}% Actual Skill</span>
+          </div>
+          <p className="text-xs text-slate-500">
+            {demonstratedCount} of {claimedEntries.length} claimed skills have at least some Proven evidence (a
+            checked subskill todo) · {claimedEntries.length - demonstratedCount} are unverified claims — not an
+            accusation, just "claimed but not yet demonstrated in THE SYSTEM." See Methodology for exactly how this
+            is calculated.
+          </p>
+        </div>
+      )}
+
       {resumes && resumes.length > 0 && (
         <div className="system-panel p-6">
           <div className="flex items-center justify-between mb-1">
@@ -132,7 +145,9 @@ export default function ResumeRaid() {
           </h3>
           <p className="text-xs text-slate-500 mb-4">
             A rough keyword-based detection, same engine as the Resume Compatibility Checker — a starting point, not
-            a verdict. Click "Test My Strength" to open that skill's subskill checklist and actually verify it.
+            a verdict. The <strong className="text-slate-400">Proven</strong> badge next to each is your real,
+            evidence-based rank for that skill (same number Company Prep reads) — click "Test My Strength" to raise
+            it.
           </p>
 
           {scanError && <p className="text-sm text-danger mb-4">{scanError}</p>}
@@ -146,12 +161,14 @@ export default function ResumeRaid() {
               <div key={category}>
                 <h4 className="font-display text-xs uppercase tracking-widest text-slate-500 mb-2">{category}</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {entries.map(({ skill, detectedRank }) => (
+                  {entries.map(({ skill, detectedRank, provenRank, proven }) => (
                     <div key={skill.id} className="border border-system-border bg-system-void/30 rounded p-3 flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-sm text-slate-200 truncate">{skill.name}</p>
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <RankPill rank={detectedRank} label="Claimed" />
+                          <RankPill rank={provenRank} label="Proven" />
+                          {proven === 0 && <span className="text-[9px] text-danger uppercase tracking-wide">Unverified</span>}
                         </div>
                       </div>
                       <div className="flex flex-col gap-1.5 items-end shrink-0">

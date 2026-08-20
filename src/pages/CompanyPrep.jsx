@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
+import MethodologyButton from "../components/MethodologyButton";
 import { companiesSortedByDay } from "../lib/prep";
+import { methodology } from "../data/methodology";
 
 const DOMAINS = ["All", "SDE", "Systems", "ML", "Fintech", "Non-Core / Consulting"];
 
@@ -16,7 +18,7 @@ function matchesDomain(company, filter) {
 }
 
 export default function CompanyPrep() {
-  const { skillLevels } = useOutletContext();
+  const { provenLevels } = useOutletContext();
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
 
@@ -28,7 +30,10 @@ export default function CompanyPrep() {
 
   return (
     <div className="system-panel p-6">
-      <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1">Company Specific Prep</p>
+      <MethodologyButton pageKey="company-prep" />
+      <p className="text-xs tracking-[0.3em] text-system-blue/70 uppercase mb-1" title={methodology["company-prep"].hover}>
+        Company Specific Prep
+      </p>
       <h2 className="font-display text-xl font-bold text-white mb-1">Every Gate on the Board</h2>
       <p className="text-sm text-slate-400 mb-4">
         Sourced from 2025 placement data — {companiesSortedByDay().length} companies, real interview reports where available.
@@ -58,7 +63,7 @@ export default function CompanyPrep() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {companiesList.map((c) => (
-          <CompanyCard key={c.id} company={c} skillLevels={skillLevels} />
+          <CompanyCard key={c.id} company={c} skillLevels={provenLevels} />
         ))}
         {companiesList.length === 0 && <p className="text-sm text-slate-500 italic col-span-full">No companies match that search.</p>}
       </div>
